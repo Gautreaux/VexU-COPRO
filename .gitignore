@@ -5,3 +5,4 @@ PROS/*
 !PROS/include
 PROS/include/*/**
 PROS/include/api.h
+**/__pycache__/**
