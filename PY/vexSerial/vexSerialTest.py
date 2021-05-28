@@ -1,28 +1,37 @@
 import itertools
+from . import ECHO_SIG, VexSerialWaitStreamSync, _sendControlMessage, _setEchoCallback
+import random
 from time import sleep
-from .vexSerialUtil import getVexComPort
-from .vexSerial import VexSerial
 
-def testAllDatagrams():
-    v = itertools.chain.from_iterable(itertools.product(list(range(256)), repeat=2))
-    b = bytes(v)
+DEFAULT_TEST_SIZE = 10*(2**20) # 10MB
 
-    print(f"Generated test data of {len(b)} bytes")
+def testRandomDatagram(testSize : int = DEFAULT_TEST_SIZE):
+    print(f"Testing random data of size {testSize}")
+    myBytes = random.randbytes(testSize)
 
-    responseList = []
+    resBytes = []
+    def echoCallback(rBytes : bytes) -> None:
+        resBytes.append(rBytes)
+    _setEchoCallback(echoCallback)
+
+    exRounds = (len(myBytes) + 252) // 253
+    print(f"Expected rounds = {exRounds}")
+    roundCounter = 0
+
+    offset = 0
+    while offset < len(myBytes):
+        thisSize = min(253, len(myBytes) - offset)
+        _sendControlMessage(bytes(itertools.chain([*ECHO_SIG, thisSize], myBytes[offset:(offset+thisSize)])))
+        sleep(1)
+        offset += thisSize
+        roundCounter += 1
+        if(roundCounter % 250 == 0):
+            print(f"{roundCounter}/{exRounds}, responses received = {len(resBytes)}")
     
-    def cb(_ : VexSerial, b : bytes):
-        responseList.append(b)
+    print(f"Done Sending, syncing")
+    VexSerialWaitStreamSync(random.randbytes(1))
+    print(f"Done syncing")
 
-    vser = VexSerial(getVexComPort(), cb)
-    vser.sendData(b)
+    response = bytes(itertools.chain.from_iterable(resBytes))
 
-    print(f"Done sending serial data")
-
-    for _ in range(50):
-        # want to make sure everything is received and I don't want to use asyncio
-        sleep(0.2)
-
-    r = bytes(itertools.chain.from_iterable(responseList))
-
-    assert(b == r)
+    print(f"Result: {response == myBytes}")

@@ -48,6 +48,7 @@ void autonomous() {}
  */
 void readCallback(const uint8_t * const buff, const uint8_t sz) {
 	pros::lcd::print(6, "(%d) %s", sz, buff);
+	pros::delay(1500);
 }
 
 /**
@@ -92,8 +93,8 @@ void opcontrol() {
 
 		if(++ctr % 100 == 0){
 			pros::lcd::print(3, "%d", ctr);
-			sprintf(buffer, "%d\n", ctr);
-			VexSerial::v_ser->sendData((uint8_t*)buffer, strlen(buffer));
+			// sprintf(buffer, "%d\n", ctr);
+			// VexSerial::v_ser->sendData((uint8_t*)buffer, strlen(buffer));
 		}
 
 		pros::delay(20);

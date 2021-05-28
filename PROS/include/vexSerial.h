@@ -3,6 +3,17 @@
 
 #define STREAM_BUFFER_SZ 256
 
+//#define VEX_SERIAL_VERBOSE
+
+#define HELLO_MSG '\x00'
+#define HELLO_ACK_MSG '\x01'
+#define GOODBYE_MSG '\x09'
+#define GOODBYE_ACK_MSG '\x0A'
+#define ECHO_SIG '\x02'
+#define ECHO_ACK_SIG '\x03'
+#define SYNC_MSG '\x04'
+#define SYNC_ACK_MSG '\x05'
+
 class VexSerial;
 
 using CallbackFunctionType = void (*) (const uint8_t * const, const uint8_t);
@@ -22,6 +33,12 @@ private:
     void sendHelloAck(void);
     void sendGoodbye(void);
     void sendGoodbyeAck(void);
+
+    // void sendEcho(const uint8_t* const buffer, const uint8_t size);
+    void sendEchoAck(void);
+
+    // void sendSync(const uint8_t data);
+    void sendSyncAck(void);
 
     void receiveControl(void);
 
