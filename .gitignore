@@ -1,0 +1,7 @@
+.vscode/*
+PROS/*
+!PROS/src/
+!PROS/src/**
+!PROS/include
+PROS/include/*/**
+PROS/include/api.h
