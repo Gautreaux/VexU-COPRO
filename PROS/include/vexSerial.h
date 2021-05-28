@@ -1,4 +1,5 @@
 #include "main.h"
+#include <time.h>
 
 #define STREAM_BUFFER_SZ 256
 
@@ -12,6 +13,8 @@ private:
     bool clientConnected;
     CallbackFunctionType callback;
     pros::Task receiveTask;
+
+    time_t last_connect_attempt_time;
 
     char strBuff[STREAM_BUFFER_SZ];
 
@@ -33,7 +36,7 @@ public:
         callback = c;
     }
     
-    void tryConnect(void);
+    void tryConnect(const int min_s_retry = 1, const bool block = false);
     void disconnect(void);
 
     inline bool isConnected(void) { return clientConnected; }

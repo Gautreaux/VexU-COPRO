@@ -12,6 +12,7 @@ _outboundMessages = queue.Queue()
 _connected : bool = False
 _vexSerialCallback : Callable[[bytes], None] = None
 _connectedEvent = threading.Event()
+_disconnectedEvent = threading.Event()
 
 MAX_RETRIES = 5
 
@@ -20,6 +21,23 @@ HELLO_ACK_MSG = b"\x01"
 GOODBYE_MSG = b"\x09"
 GOODBYE_ACK_MSG = b"\x0A"
 
+def _setConnected() -> None:
+    global _connected
+    global _connectedEvent
+    global _disconnectedEvent
+
+    _connected = True
+    _connectedEvent.set()
+    _disconnectedEvent.clear()
+
+def _setDisconnected() -> None:
+    global _connected
+    global _connectedEvent
+    global _disconnectedEvent
+
+    _connected = False
+    _connectedEvent.clear()
+    _disconnectedEvent.set()
 
 def sendMessage(msg : bytes) -> None:
     global _outboundMessages
@@ -32,9 +50,8 @@ def _sendControlMessage(msg : bytes) -> None:
 
 def _messageSender() -> None:
     global _connected
-    global _connectedEvent
     global _outboundMessages
-    while True:
+    while threading.current_thread().is_alive:
         m_pair : Tuple[bytes, bool] = _outboundMessages.get()
         m : bytes = m_pair[0]
         c : bool = m_pair[1]
@@ -52,16 +69,14 @@ def _messageSender() -> None:
             elif m is HELLO_ACK_MSG:
                 print("VexSerial:Sending hello ack")
                 v_ser.write(b"\x00" + m)
-                _connected = True
-                _connectedEvent.set()
+                _setConnected()
             elif _connected and m is GOODBYE_MSG:
                 print("VexSerial:Sending goodbye")
                 v_ser.write(b"\x00" + m)
             elif _connected and m is GOODBYE_ACK_MSG:
                 print("VexSerial:Sending goodbye ack")
                 v_ser.write(b"\x00" + m)
-                _connected = False
-                _connectedEvent.clear()
+                _setDisconnected()
             continue
 
         if _connected is False:
@@ -80,12 +95,10 @@ def _messageSender() -> None:
             v_ser.write(bytes(itertools.chain([thisSize], m[offset:(offset+thisSize)])))
             offset += thisSize
 
-
 def _messageReceiver() -> None:
     global _connected
-    global _connectedEvent
     global _vexSerialCallback
-    while True:
+    while threading.current_thread().is_alive:  
         b = v_ser.read()
         if b[0] == 0:
             # control sequence
@@ -93,21 +106,17 @@ def _messageReceiver() -> None:
             if bb == HELLO_MSG:
                 print("VexSerial:Received hello")
                 _sendControlMessage(HELLO_ACK_MSG)
-                _connected = True
-                _connectedEvent.set()
+                _setConnected()
             elif bb == HELLO_ACK_MSG:
                 print("VexSerial:Received hello ack")
-                _connected = True
-                _connectedEvent.set()
+                _setConnected()
             elif bb == GOODBYE_MSG:
                 print("VexSerial:Received goodbye")
                 _sendControlMessage(GOODBYE_ACK_MSG)
-                _connected = False
-                _connectedEvent.clear()
+                _setDisconnected()
             elif bb == GOODBYE_ACK_MSG:
                 print("VexSerial:Received goodbye ack")
-                _connected = False
-                _connectedEvent.clear()
+                _setDisconnected()
             else:
                 print(f"Unrecognized control cod: {bb}")
             continue
@@ -130,13 +139,19 @@ def clearVexSerialCallback():
     global _vexSerialCallback
     _vexSerialCallback = None
 
-def waitForConnection():
+def VexSerialWaitForConnection():
     global _connectedEvent
     _connectedEvent.wait()
 
+def VexSerialWaitForDisconnection():
+    global _disconnectedEvent
+    _disconnectedEvent.wait()
+
 def VexSerialTeardown():
-    # TODO - very important for sanity
-    raise NotImplementedError()
+    # might be a race condition in here so thats fun
+    _read_thread.is_alive = False
+    _send_thread.is_alive = False
+    _sendControlMessage(GOODBYE_MSG)
     _send_thread.join()
     _read_thread.join()
 
@@ -147,7 +162,7 @@ while retryCtr < MAX_RETRIES:
         print(f"Resolved vex com port to: {port}")
         v_ser : serial = serial.Serial(port=port, baudrate=115200)
         retryCtr = None
-        _connected = False
+        _setDisconnected()
         print("Successfully opened serial port...")
         break
     except DeviceResolutionFailed as e:

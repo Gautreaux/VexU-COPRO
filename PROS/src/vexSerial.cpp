@@ -24,7 +24,8 @@ VexSerial::VexSerial(void):
     taskOk(true),
     clientConnected(false),
     callback(NULL),
-    receiveTask(receiveDataWrapper, NULL)
+    receiveTask(receiveDataWrapper, NULL),
+    last_connect_attempt_time(time(NULL))
 {
     //setup the serial outputs in prose
     //pros::c::serctl(DEVCTL_SET_BAUDRATE, 115200);
@@ -126,9 +127,24 @@ void VexSerial::sendData(const uint8_t* const buff, const size_t size){
     }
 }
 
-void VexSerial::tryConnect(void){
+void VexSerial::tryConnect(const int min_s_retry, const bool block){
     if(clientConnected == false){
+        time_t nowTime = time(NULL);
+        if(nowTime - min_s_retry < last_connect_attempt_time){
+            if(block){
+                pros::delay((nowTime - min_s_retry)*1000);
+            }
+            else{
+                return;
+            }
+
+            if(clientConnected){
+                return;
+            }
+        }
+
         sendHello();
+        last_connect_attempt_time = time(NULL);
     }
 }
 
