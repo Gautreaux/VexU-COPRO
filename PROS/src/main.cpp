@@ -1,20 +1,5 @@
 #include "main.h"
 #include "vexSerial.h"
-/**
- * A callback function for LLEMU's center button.
- *
- * When this callback is fired, it will toggle line 2 of the LCD text between
- * "I was pressed!" and nothing.
- */
-void on_center_button() {
-	static bool pressed = false;
-	pressed = !pressed;
-	if (pressed) {
-		pros::lcd::set_text(2, "I was pressed!");
-	} else {
-		pros::lcd::clear_line(2);
-	}
-}
 
 /**
  * Runs initialization code. This occurs as soon as the program is started.
@@ -25,8 +10,6 @@ void on_center_button() {
 void initialize() {
 	pros::lcd::initialize();
 	pros::lcd::set_text(1, "Hello PROS User!");
-
-	pros::lcd::register_btn1_cb(on_center_button);
 }
 
 /**
@@ -87,6 +70,7 @@ void opcontrol() {
 	int32_t ctr = 0;
 
 	VexSerial::v_ser->setCallback(readCallback);
+	VexSerial::v_ser->tryConnect();
 	pros::lcd::print(5, "Last Serial Message:");
 
 	char buffer[STREAM_BUFFER_SZ];
@@ -97,10 +81,17 @@ void opcontrol() {
 		                 (pros::lcd::read_buttons() & LCD_BTN_CENTER) >> 1,
 		                 (pros::lcd::read_buttons() & LCD_BTN_RIGHT) >> 0);
 
-		pros::lcd::print(3, "%d", sensor.get_value());
+		pros::lcd::print(2, "Phys Button: %d", sensor.get_value());
+
+		if(VexSerial::v_ser->isConnected()){
+			pros::lcd::print(7, "Client Connected...");
+		}else{
+			pros::lcd::print(7, "NO CLIENT!!!");
+			VexSerial::v_ser->tryConnect();
+		}
 
 		if(++ctr % 100 == 0){
-			pros::lcd::print(4, "%d", ctr);
+			pros::lcd::print(3, "%d", ctr);
 			sprintf(buffer, "%d\n", ctr);
 			VexSerial::v_ser->sendData((uint8_t*)buffer, strlen(buffer));
 		}

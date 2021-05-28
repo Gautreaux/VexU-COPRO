@@ -8,14 +8,12 @@ using CallbackFunctionType = void (*) (const uint8_t * const, const uint8_t);
 
 class VexSerial {
 private:
-    // bool isOk;
     bool taskOk;
-    pros::Task receiveTask;
-    
-    char strBuff[STREAM_BUFFER_SZ];
-
+    bool clientConnected;
     CallbackFunctionType callback;
-    //TODO - how to start a task...
+    pros::Task receiveTask;
+
+    char strBuff[STREAM_BUFFER_SZ];
 
     void sendHello(void);
     void sendHelloAck(void);
@@ -34,6 +32,11 @@ public:
     inline void setCallback(CallbackFunctionType c){
         callback = c;
     }
+    
+    void tryConnect(void);
+    void disconnect(void);
+
+    inline bool isConnected(void) { return clientConnected; }
 };
 
-void receiveDataWrapper(void);
+void receiveDataWrapper(void* params);

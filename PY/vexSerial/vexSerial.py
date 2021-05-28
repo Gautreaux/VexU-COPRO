@@ -42,6 +42,7 @@ class VexSerial:
                 # control sequence
                 self._recvControl()
                 continue
+            print(f"Reading message of length: {b[0]}")
             bb = self._serialport.read(b[0])
             if len(bb) != b[0]:
                 print(f"WARNING: expected message of length {b[0]} got length {len(bb)} instead")
@@ -89,6 +90,7 @@ class VexSerial:
         offset = 0
         while offset < len(data):
             thisDist = min(255, len(data) - offset)
+            print(f"Sending: {bytes(itertools.chain([thisDist], data[offset:(offset+thisDist)]))}")
             self._serialport.write(bytes(itertools.chain([thisDist], data[offset:(offset+thisDist)])))
             offset += thisDist
 

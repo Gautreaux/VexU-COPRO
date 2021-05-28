@@ -12,9 +12,9 @@ def main():
     myPort = getVexComPort()
     print(f"Resolved VEX Device port to: {myPort}")
 
-    vser = VexSerial(myPort, tempCallback)
+    v_ser = VexSerial(myPort, tempCallback)
 
-    if bool(vser):
+    if bool(v_ser):
         print("Serial port opened successfully")
     else:
         print("Serial port failed to open")
@@ -24,12 +24,12 @@ def main():
         while True:
             i = input("Enter message to send: ")
             i = i + '\n'
-            vser.sendData(i.encode("ascii"))
+            v_ser.sendData(i.encode("ascii"))
     except KeyboardInterrupt:
         pass
 
-    print("Stopping vser")
-    vser._stopRecv()
+    print("Stopping v_ser")
+    v_ser._stopRecv()
 
 if __name__ == "__main__":
     # this file was run directly

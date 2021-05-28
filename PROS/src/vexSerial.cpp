@@ -18,7 +18,11 @@ void VexSerial::sendGoodbyeAck(){
     taskOk = false;
 }
 
-VexSerial::VexSerial(void): taskOk(true), receiveTask(receiveDataWrapper), callback(NULL)
+VexSerial::VexSerial(void): 
+    taskOk(true),
+    clientConnected(false),
+    callback(NULL),
+    receiveTask(receiveDataWrapper, NULL)
 {
     //setup the serial outputs in prose
     //pros::c::serctl(DEVCTL_SET_BAUDRATE, 115200);
@@ -27,57 +31,69 @@ VexSerial::VexSerial(void): taskOk(true), receiveTask(receiveDataWrapper), callb
     //setup the out stream buffer
     memset(strBuff, 0, STREAM_BUFFER_SZ);
     setbuffer(stdout, strBuff, STREAM_BUFFER_SZ);
-
-    //setup task
-    // pros::newTask = pros::Task(receiveData, NULL);
-    // receiveTask = std::move(newTask);
-
-    //try and connect to the friend
-    sendHello();
 }
 
 VexSerial::~VexSerial(){
     //TODO - cleanup task properly
+    disconnect();
+
+    //trigger task to exit
+    // may dangle wating for message?
+    taskOk = false; 
 }
 
 void VexSerial::receiveData() {
-    uint8_t c;
+    uint8_t c[2];
     uint8_t body[STREAM_BUFFER_SZ];
     memset(body, 0, STREAM_BUFFER_SZ);
 
     while(taskOk){
-        fgets((char*)(&c), 1, stdin);
-        if(c == 0){
+        fgets((char*)(c), 2, stdin);
+        // pros::lcd::print(6, "%02X", c[0]);
+        pros::lcd::print(6, "NEW MSG LEN: %d", c[0]);
+        pros::delay(500);
+        if(c[0] == 0){
             //control operation
             receiveControl();
         }
+        if(!stdin){
+            pros::lcd::print(6, "stdin error");
+            pros::delay(1);
+        }
         else{
-            fgets((char*)body, c, stdin);
+            memset(body, 0, STREAM_BUFFER_SZ);
+            fgets((char*)body, c[0]+1, stdin);
+            pros::lcd::print(6, "%02X %02X %02X %02X %02X %02X %02X %02X", body[0], body[1], body[2], body[3], body[4], body[5], body[6], body[7]);
+            pros::delay(500);
             if(callback != NULL){
-                callback(body, c);
+                callback(body, c[0]);
             }
         }
     }
 }
 
 void VexSerial::receiveControl(){
-    uint8_t c;
-    fgets((char*)(&c), 1, stdin);
-    switch (c)
+    uint8_t c[2];
+    fgets((char*)(&c), 2, stdin);
+    switch (c[0])
     {
     case 0:
         //received hello
         sendHelloAck();
+        clientConnected=true;
         break;
     case 1:
         //received hello-ack
+        clientConnected=true;
         break;
     case 9:
         //received goodbye
         sendGoodbyeAck();
+        clientConnected=false;
         break;
     case 10:
         //received goodbye ack
+        clientConnected=false;
         break;
     default:
         break;
@@ -89,6 +105,10 @@ void VexSerial::sendData(const uint8_t* const buff, const size_t size){
         return;
     }
 
+    if(clientConnected == false){
+        return;
+    }
+
     size_t offset = 0;
     uint8_t buffer[STREAM_BUFFER_SZ];
     memset(buffer, 0, STREAM_BUFFER_SZ);
@@ -97,14 +117,28 @@ void VexSerial::sendData(const uint8_t* const buff, const size_t size){
         uint8_t thisSize = (uint8_t)(std::min(((unsigned int)STREAM_BUFFER_SZ - 1), size - offset));
         buffer[0] = thisSize;
         memcpy(buffer + 1, buff + offset, thisSize);
-        fwrite(buffer, 1, thisSize, stdout);
+        pros::lcd::print(4, "%02X %02X %02X %02X %02X %02X %02X %02X", buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], buffer[6], buffer[7]);
+        fwrite(buffer, 1, thisSize+1, stdout);
         fflush(stdout);
         offset += thisSize;
     }
 }
 
+void VexSerial::tryConnect(void){
+    if(clientConnected == false){
+        sendHello();
+    }
+}
+
+void VexSerial::disconnect(void){
+    if(clientConnected){
+        sendGoodbye();
+    }
+}
+
 VexSerial * const VexSerial::v_ser = new VexSerial();
 
-void receiveDataWrapper(void){
+void receiveDataWrapper(void* params){
+    //return;
     return VexSerial::v_ser->receiveData();
 }
