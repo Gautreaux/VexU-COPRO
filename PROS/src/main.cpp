@@ -1,5 +1,5 @@
 #include "main.h"
-
+#include "vexSerial.h"
 /**
  * A callback function for LLEMU's center button.
  *
@@ -27,9 +27,6 @@ void initialize() {
 	pros::lcd::set_text(1, "Hello PROS User!");
 
 	pros::lcd::register_btn1_cb(on_center_button);
-
-	//pros::c::serctl(DEVCTL_SET_BAUDRATE, 115200);
-	pros::c::serctl(SERCTL_DISABLE_COBS, NULL);
 }
 
 /**
@@ -66,17 +63,8 @@ void autonomous() {}
 /**
  * Runs reading of code
  */
-void read_task_function(void* parameters) {
-	char buff[128];
-	memset(buff, 0, 128);
-
-	pros::lcd::print(5, "Last Serial Message:");
-
-	while(true) {
-		fgets(buff, 128, stdin);
-		fprintf(stdout, "Echo: %s\n", buff);
-		pros::lcd::print(6, "(%d) %s", strlen(buff), buff);
-	}
+void readCallback(const uint8_t * const buff, const uint8_t sz) {
+	pros::lcd::print(6, "(%d) %s", sz, buff);
 }
 
 /**
@@ -98,7 +86,11 @@ void opcontrol() {
 	pros::ADIDigitalIn sensor('A');
 	int32_t ctr = 0;
 
-	pros::Task my_task(read_task_function, NULL);
+	VexSerial::v_ser->setCallback(readCallback);
+	pros::lcd::print(5, "Last Serial Message:");
+
+	char buffer[STREAM_BUFFER_SZ];
+	memset(buffer, 0, STREAM_BUFFER_SZ);
 
 	while (true) {
 		pros::lcd::print(0, "%d %d %d", (pros::lcd::read_buttons() & LCD_BTN_LEFT) >> 2,
@@ -109,8 +101,8 @@ void opcontrol() {
 
 		if(++ctr % 100 == 0){
 			pros::lcd::print(4, "%d", ctr);
-			fprintf(stdout, "%d\n", ctr);
-			//fflush(stdout);
+			sprintf(buffer, "%d\n", ctr);
+			VexSerial::v_ser->sendData((uint8_t*)buffer, strlen(buffer));
 		}
 
 		pros::delay(20);

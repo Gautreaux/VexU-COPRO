@@ -1,4 +1,5 @@
 import itertools
+from time import sleep
 from .vexSerialUtil import getVexComPort
 from .vexSerial import VexSerial
 
@@ -17,6 +18,10 @@ def testAllDatagrams():
     vser.sendData(b)
 
     print(f"Done sending serial data")
+
+    for _ in range(50):
+        # want to make sure everything is received and I don't want to use asyncio
+        sleep(0.2)
 
     r = bytes(itertools.chain.from_iterable(responseList))
 

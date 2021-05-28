@@ -3,11 +3,11 @@ from .vexSerial.vexSerial import VexSerial
 from .vexSerial import getVexComPort 
 
 def tempCallback(_ : VexSerial, b : bytes) -> None:
-    print(b)
+    print(b, flush=True)
 
 def main():
-    testAllDatagrams()
-    exit()
+    # testAllDatagrams()
+    # exit()
 
     myPort = getVexComPort()
     print(f"Resolved VEX Device port to: {myPort}")
