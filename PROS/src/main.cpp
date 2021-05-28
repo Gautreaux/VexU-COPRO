@@ -27,6 +27,9 @@ void initialize() {
 	pros::lcd::set_text(1, "Hello PROS User!");
 
 	pros::lcd::register_btn1_cb(on_center_button);
+
+	//pros::c::serctl(DEVCTL_SET_BAUDRATE, 115200);
+	pros::c::serctl(SERCTL_DISABLE_COBS, NULL);
 }
 
 /**
@@ -61,6 +64,22 @@ void competition_initialize() {}
 void autonomous() {}
 
 /**
+ * Runs reading of code
+ */
+void read_task_function(void* parameters) {
+	char buff[128];
+	memset(buff, 0, 128);
+
+	pros::lcd::print(5, "Last Serial Message:");
+
+	while(true) {
+		fgets(buff, 128, stdin);
+		fprintf(stdout, "Echo: %s\n", buff);
+		pros::lcd::print(6, "(%d) %s", strlen(buff), buff);
+	}
+}
+
+/**
  * Runs the operator control code. This function will be started in its own task
  * with the default priority and stack size whenever the robot is enabled via
  * the Field Management System or the VEX Competition Switch in the operator
@@ -75,18 +94,25 @@ void autonomous() {}
  */
 void opcontrol() {
 	pros::Controller master(pros::E_CONTROLLER_MASTER);
-	pros::Motor left_mtr(1);
-	pros::Motor right_mtr(2);
+
+	pros::ADIDigitalIn sensor('A');
+	int32_t ctr = 0;
+
+	pros::Task my_task(read_task_function, NULL);
 
 	while (true) {
 		pros::lcd::print(0, "%d %d %d", (pros::lcd::read_buttons() & LCD_BTN_LEFT) >> 2,
 		                 (pros::lcd::read_buttons() & LCD_BTN_CENTER) >> 1,
 		                 (pros::lcd::read_buttons() & LCD_BTN_RIGHT) >> 0);
-		int left = master.get_analog(ANALOG_LEFT_Y);
-		int right = master.get_analog(ANALOG_RIGHT_Y);
 
-		left_mtr = left;
-		right_mtr = right;
+		pros::lcd::print(3, "%d", sensor.get_value());
+
+		if(++ctr % 100 == 0){
+			pros::lcd::print(4, "%d", ctr);
+			fprintf(stdout, "%d\n", ctr);
+			//fflush(stdout);
+		}
+
 		pros::delay(20);
 	}
 }

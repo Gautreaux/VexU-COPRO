@@ -34,6 +34,7 @@
  */
 #define PROS_USE_LITERALS
 
+#include  "pros/apix.h"
 #include "api.h"
 
 /**
