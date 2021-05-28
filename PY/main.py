@@ -1,13 +1,17 @@
-from PY.vexSerial.vexSerialTest import testAllDatagrams
-from .vexSerial.vexSerial import VexSerial
-from .vexSerial import getVexComPort 
+from .vexSerial import setVexSerialCallback, sendMessage, VexSerialDefaultCallback, waitForConnection
 
-def tempCallback(_ : VexSerial, b : bytes) -> None:
-    print(b, flush=True)
+
 
 def main():
+    setVexSerialCallback(VexSerialDefaultCallback)
+    # mainLogic()
+    waitForConnection()
+    while True:
+        i = input("Enter message: ")
+        sendMessage(bytes(i, encoding="ascii"))
+
     # testAllDatagrams()
-    # exit()
+    exit()
 
     myPort = getVexComPort()
     print(f"Resolved VEX Device port to: {myPort}")

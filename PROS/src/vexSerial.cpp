@@ -1,21 +1,23 @@
 #include "vexSerial.h"
 
 void VexSerial::sendHello(){
-    fprintf(stdout, "\x00\x00");
+    fwrite("\x00\x00", 1, 2, stdout);
+    fflush(stdout);
 }
 
 void VexSerial::sendHelloAck(){
-    fprintf(stdout, "\x00\x01");
+    fwrite("\x00\x01", 1, 2, stdout);
+    fflush(stdout);
 }
 
 void VexSerial::sendGoodbye(){
-    fprintf(stdout, "\x00\x09");
-    taskOk = false;
+    fwrite("\x00\x09", 1, 2, stdout);
+    fflush(stdout);
 }
 
 void VexSerial::sendGoodbyeAck(){
-    fprintf(stdout, "\x00\x0A");
-    taskOk = false;
+    fwrite("\x00\x0A", 1, 2, stdout);
+    fflush(stdout);
 }
 
 VexSerial::VexSerial(void): 
