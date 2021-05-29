@@ -9,7 +9,6 @@
  */
 void initialize() {
 	pros::lcd::initialize();
-	pros::lcd::set_text(1, "Hello PROS User!");
 }
 
 /**
@@ -44,14 +43,6 @@ void competition_initialize() {}
 void autonomous() {}
 
 /**
- * Runs reading of code
- */
-void readCallback(const uint8_t * const buff, const uint8_t sz) {
-	pros::lcd::print(5, "(%d) %s", sz, buff);
-	pros::delay(1000);
-}
-
-/**
  * Runs the operator control code. This function will be started in its own task
  * with the default priority and stack size whenever the robot is enabled via
  * the Field Management System or the VEX Competition Switch in the operator
@@ -67,34 +58,20 @@ void readCallback(const uint8_t * const buff, const uint8_t sz) {
 void opcontrol() {
 	pros::Controller master(pros::E_CONTROLLER_MASTER);
 
-	pros::ADIDigitalIn sensor('A');
-	int32_t ctr = 0;
-
-	VexSerial::v_ser->setCallback(readCallback);
-	VexSerial::v_ser->tryConnect();
-	pros::lcd::print(5, "Last Serial Message:");
-
-	char buffer[STREAM_BUFFER_SZ];
-	memset(buffer, 0, STREAM_BUFFER_SZ);
+	uint8_t nextLine = 0;
+	uint8_t msgLen;
+	uint8_t recvBuffer[MAX_MESSAGE_LEN];
 
 	while (true) {
-		pros::lcd::print(0, "%d %d %d", (pros::lcd::read_buttons() & LCD_BTN_LEFT) >> 2,
-		                 (pros::lcd::read_buttons() & LCD_BTN_CENTER) >> 1,
-		                 (pros::lcd::read_buttons() & LCD_BTN_RIGHT) >> 0);
+		if(VexSerial::v_ser->receiveMessageIfAvailable(recvBuffer, msgLen))
+		{
+			pros::lcd::print(
+				nextLine, "(%03d) %02X %02X %02X %02X",
+				msgLen, recvBuffer[0], recvBuffer[1],
+				recvBuffer[2], recvBuffer[3]
+			);
 
-		pros::lcd::print(2, "Phys Button: %d", sensor.get_value());
-
-		if(VexSerial::v_ser->isConnected()){
-			pros::lcd::print(7, "Client Connected...");
-		}else{
-			pros::lcd::print(7, "NO CLIENT!!!");
-			VexSerial::v_ser->tryConnect();
-		}
-
-		if(++ctr % 100 == 0){
-			pros::lcd::print(3, "%d", ctr);
-			// sprintf(buffer, "%d\n", ctr);
-			// VexSerial::v_ser->sendData((uint8_t*)buffer, strlen(buffer));
+			nextLine = (nextLine + 1) & (7); // fast mod8
 		}
 
 		pros::delay(20);

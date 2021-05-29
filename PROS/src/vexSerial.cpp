@@ -1,252 +1,173 @@
 #include "vexSerial.h"
 
-void VexSerial::sendHello(){
-    fwrite("\x00\x00", 1, 2, stdout);
-    fflush(stdout);
+VexSerial * const VexSerial::v_ser = new VexSerial();
+
+VexSerial::PendingMessage::PendingMessage(void){
+    memset(this, 0, sizeof(PendingMessage));
 }
 
-void VexSerial::sendHelloAck(){
-    fwrite("\x00\x01", 1, 2, stdout);
-    fflush(stdout);
+VexSerial::VexSerialQueues::VexSerialQueues(
+    pros::c::queue_t a, pros::c::queue_t s, pros::c::queue_t r
+) : AvailablePool(a), SendingPool(s), ReceivePool(r), Running(true)
+{}
+
+VexSerial::VexSerialQueues::~VexSerialQueues(void){
+    pros::c::queue_delete(AvailablePool);
+    pros::c::queue_delete(SendingPool);
+    pros::c::queue_delete(ReceivePool);
 }
 
-void VexSerial::sendGoodbye(){
-    fwrite("\x00\x09", 1, 2, stdout);
-    fflush(stdout);
-}
-
-void VexSerial::sendGoodbyeAck(){
-    fwrite("\x00\x0A", 1, 2, stdout);
-    fflush(stdout);
-}
-
-void VexSerial::sendEchoAck(){
-    char buffer[STREAM_BUFFER_SZ + 1];
-    memset(buffer, 0, STREAM_BUFFER_SZ + 1);
-
-    uint8_t len = fgetc(stdin);
-
-    buffer[0] = '\x00';
-    buffer[1] = ECHO_ACK_SIG;
-    buffer[2] = len;
-
-    fread(buffer+3, 1, len, stdin);
-    fwrite(buffer, 1, len+3, stdout);
-    fflush(stdout);
-}
-
-void VexSerial::sendSyncAck(){
-    pros::lcd::print(7, "ln: %d", __LINE__);
-    uint8_t sig = fgetc(stdin);
-    pros::lcd::print(7, "ln: %d", __LINE__);
-    char buff[4];
-    pros::lcd::print(7, "ln: %d", __LINE__);
-    buff[0] = '\x00';
-    pros::lcd::print(7, "ln: %d", __LINE__);
-    buff[1] = SYNC_ACK_MSG;
-    pros::lcd::print(7, "ln: %d", __LINE__);
-    buff[2] = sig;
-    pros::lcd::print(7, "ln: %d", __LINE__);
-    buff[3] = '\x00';
-    pros::lcd::print(7, "ln: %d", __LINE__);
-
-    pros::lcd::print(6, "Sync acking %02X %d %s", sig, sig, buff+2);
-    pros::lcd::print(7, "ln: %d", __LINE__);
-
-    fwrite(buff, 1, 3, stdout);
-    pros::lcd::print(7, "ln: %d", __LINE__);
-    fflush(stdout);
-    pros::lcd::print(7, "ln: %d", __LINE__);
-}
-
-VexSerial::VexSerial(void): 
-    taskOk(true),
-    clientConnected(false),
-    callback(NULL),
-    receiveTask(receiveDataWrapper, NULL),
-    last_connect_attempt_time(time(NULL))
+VexSerial::VexSerial(void) : 
+vsq (
+    pros::c::queue_create(MAX_MESSAGES_IN_FLIGHT, sizeof(PendingMessage*)),
+    pros::c::queue_create(MAX_MESSAGES_IN_FLIGHT, sizeof(PendingMessage*)),
+    pros::c::queue_create(MAX_MESSAGES_IN_FLIGHT, sizeof(PendingMessage*))
+),
+sendTask(VexSerialSender, (void*)(&vsq)),
+recvTask(VexSerialReceiver, (void*)(&vsq))
 {
     //setup the serial outputs in prose
     //pros::c::serctl(DEVCTL_SET_BAUDRATE, 115200);
 	pros::c::serctl(SERCTL_DISABLE_COBS, NULL);
 
-    //setup the out stream buffer
-    memset(strBuff, 0, STREAM_BUFFER_SZ);
-    setbuffer(stdout, strBuff, STREAM_BUFFER_SZ);
+    for(unsigned int i = 0; i < MAX_MESSAGES_IN_FLIGHT; i++){
+        pros::c::queue_append(vsq.AvailablePool, messagePool+i, TIMEOUT_MAX);
+    }
 }
 
 VexSerial::~VexSerial(){
-    //TODO - cleanup task properly
-    disconnect();
-
-    //trigger task to exit
-    // may dangle wating for message?
-    taskOk = false; 
+    //TODO : teardown tasks properly
 }
 
-void VexSerial::receiveData() {
-    pros::lcd::print(7, "ln: %d", __LINE__);
-    uint8_t c;
-    pros::lcd::print(7, "ln: %d", __LINE__);
-    uint8_t body[STREAM_BUFFER_SZ + 1];
-    pros::lcd::print(7, "ln: %d", __LINE__);
-    memset(body, 0, STREAM_BUFFER_SZ + 1);
-    pros::lcd::print(7, "ln: %d", __LINE__);
+void VexSerial::serializeMsg(const uint8_t* const msg, uint8_t* dst, const uint8_t size){
 
-    while(taskOk){
-    pros::lcd::print(7, "ln: %d", __LINE__);
-        c = fgetc(stdin);
-    pros::lcd::print(7, "ln: %d", __LINE__);
-#ifdef VEX_SERIAL_VERBOSE
-        pros::lcd::print(6, "NEW MSG LEN: %d", c);
-        pros::delay(500);
-#endif
-        if(!stdin){
-    pros::lcd::print(7, "ln: %d", __LINE__);
-            pros::lcd::print(6, "stdin error");
-    pros::lcd::print(7, "ln: %d", __LINE__);
-            pros::delay(1);
-    pros::lcd::print(7, "ln: %d", __LINE__);
+    const uint8_t* nextRead = msg;
+    uint8_t* nextWrite = dst;
+    uint8_t bytesCopied = 0;
+
+    while(bytesCopied < size){
+        uint8_t* p = (uint8_t*)(memccpy(nextWrite+1, nextRead, ILLEGAL_CHAR, size - bytesCopied));
+        uint8_t thisBytesCopied = ((p == nullptr) ? (size - bytesCopied + 1) : (p - nextWrite - 1));
+
+        *(nextWrite) = thisBytesCopied;
+        nextWrite += thisBytesCopied;
+        bytesCopied += thisBytesCopied;
+        nextRead += thisBytesCopied;
+    }
+
+    if(*(nextWrite) == ILLEGAL_CHAR){
+        *(nextWrite++) = '\x01';
+    }
+    *(nextWrite) = '\x00';
+}
+void VexSerial::deserializeMsg(const uint8_t* const ser_msg, uint8_t* dst, const uint8_t size){
+    const uint8_t* nextRead = ser_msg;
+    uint8_t* nextWrite = dst;
+
+    uint8_t amtToCpy = *(nextRead++);
+    while(amtToCpy != 0){
+        memcpy(nextWrite, nextRead, amtToCpy-1);
+        nextWrite += amtToCpy-1;
+        nextRead += amtToCpy-1;
+
+        *(nextWrite++) = ILLEGAL_CHAR;
+
+        amtToCpy = *(nextRead++);
+    }
+
+    //add null terminator
+    nextWrite--;
+    *nextWrite = '\x00';
+}
+void VexSerial::VexSerialSender(void* params){
+    VexSerialQueues* const vsq = (VexSerialQueues*)(params);
+
+    uint8_t formatBuffer[MAX_MESSAGE_LEN];
+
+    while(vsq->Running){
+        PendingMessage* thisMessage;
+
+        if(pros::c::queue_recv(vsq->SendingPool, &thisMessage, TIMEOUT_MAX)){
+            //format the message to remove all 'p'
+            serializeMsg(thisMessage->messagebuff, formatBuffer, thisMessage->messageLen);
+
+            //write the formatted message
+            fwrite(formatBuffer, thisMessage->messageLen + 2, 1, stdout);
+            fflush(stdout);
+
+            memset(thisMessage, 0, sizeof(PendingMessage));
+
+            //should never block
+            pros::c::queue_append(vsq->AvailablePool, thisMessage, TIMEOUT_MAX);
+        }else{
+            // the recv was cancelled
+            // the program is probably tearing down
         }
-        
-    pros::lcd::print(7, "ln: %d", __LINE__);
-        if(c == 0){
-    pros::lcd::print(7, "ln: %d", __LINE__);
-            //control operation
-            receiveControl();
-    pros::lcd::print(7, "ln: %d", __LINE__);
-        }
-        else
-        {
-    pros::lcd::print(7, "ln: %d", __LINE__);
-            memset(body, 0, STREAM_BUFFER_SZ + 1);
-    pros::lcd::print(7, "ln: %d", __LINE__);
-            fread((char*)body, 1, c, stdin);
-    pros::lcd::print(7, "ln: %d", __LINE__);
-#ifdef VEX_SERIAL_VERBOSE
-            pros::lcd::print(6, "%02X %02X %02X %02X %02X %02X %02X %02X", body[0], body[1], body[2], body[3], body[4], body[5], body[6], body[7]);
-            pros::delay(500);
-#endif
-    pros::lcd::print(7, "ln: %d", __LINE__);
-            if(callback != NULL){
-    pros::lcd::print(7, "ln: %d", __LINE__);
-                callback(body, c);
-    pros::lcd::print(7, "ln: %d", __LINE__);
-            }
-    pros::lcd::print(7, "ln: %d", __LINE__);
-        }
-    pros::lcd::print(7, "ln: %d", __LINE__);
     }
 }
 
-void VexSerial::receiveControl(){
-    pros::lcd::print(7, "ln: %d", __LINE__);
-    uint8_t c = fgetc(stdin);
-    pros::lcd::print(7, "ln: %d", __LINE__);
-    switch (c)
-    {
-    case HELLO_MSG:
-    pros::lcd::print(7, "ln: %d", __LINE__);
-        //received hello
-        sendHelloAck();
-    pros::lcd::print(7, "ln: %d", __LINE__);
-        clientConnected=true;
-    pros::lcd::print(7, "ln: %d", __LINE__);
-        break;
-    case HELLO_ACK_MSG:
-    pros::lcd::print(7, "ln: %d", __LINE__);
-        //received hello-ack
-        clientConnected=true;
-    pros::lcd::print(7, "ln: %d", __LINE__);
-        break;
-    case GOODBYE_MSG:
-    pros::lcd::print(7, "ln: %d", __LINE__);
-        //received goodbye
-        sendGoodbyeAck();
-    pros::lcd::print(7, "ln: %d", __LINE__);
-        clientConnected=false;
-    pros::lcd::print(7, "ln: %d", __LINE__);
-        break;
-    case GOODBYE_ACK_MSG:
-    pros::lcd::print(7, "ln: %d", __LINE__);
-        //received goodbye ack
-        clientConnected=false;
-    pros::lcd::print(7, "ln: %d", __LINE__);
-        break;
-    case ECHO_SIG:
-    pros::lcd::print(7, "ln: %d", __LINE__);
-        sendEchoAck();
-    pros::lcd::print(7, "ln: %d", __LINE__);
-        break;
-    case SYNC_MSG:
-    pros::lcd::print(7, "ln: %d", __LINE__);
-        sendSyncAck();
-    pros::lcd::print(7, "ln: %d", __LINE__);
-        break;
-    default:
-    pros::lcd::print(7, "ln: %d", __LINE__);
-        break;
-    }
-    pros::lcd::print(7, "ln: %d", __LINE__);
-}
+void VexSerial::VexSerialReceiver(void* params){
+    VexSerialQueues* const vsq = (VexSerialQueues*)(params);
 
-void VexSerial::sendData(const uint8_t* const buff, const size_t size){
-    if(size == 0){
-        return;
-    }
+    uint8_t formatBuffer[MAX_MESSAGE_LEN];
 
-    if(clientConnected == false){
-        return;
-    }
+    while(vsq->Running){
 
-    size_t offset = 0;
-    uint8_t buffer[STREAM_BUFFER_SZ];
-    memset(buffer, 0, STREAM_BUFFER_SZ);
+        uint8_t chunkSize;
+        uint8_t messageLen = 0;
+        uint8_t* nextWrite = formatBuffer;
 
-    while(offset < size){
-        uint8_t thisSize = (uint8_t)(std::min(((unsigned int)STREAM_BUFFER_SZ - 1), size - offset));
-        buffer[0] = thisSize;
-        memcpy(buffer + 1, buff + offset, thisSize);
-#ifdef VEX_SERIAL_VERBOSE
-        pros::lcd::print(4, "%02X %02X %02X %02X %02X %02X %02X %02X", buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], buffer[6], buffer[7]);
-#endif
-        fwrite(buffer, 1, thisSize+1, stdout);
-        fflush(stdout);
-        offset += thisSize;
-    }
-}
-
-void VexSerial::tryConnect(const int min_s_retry, const bool block){
-    pros::lcd::print(7, "Attempting connection...");
-    if(clientConnected == false){
-        time_t nowTime = time(NULL);
-        if(nowTime - min_s_retry < last_connect_attempt_time){
-            if(block){
-                pros::delay((nowTime - min_s_retry)*1000);
-            }
-            else{
-                return;
-            }
-
-            if(clientConnected){
-                return;
-            }
+        while(*(nextWrite++) = (chunkSize = fgetc(stdin))){
+            fread(nextWrite, 1, chunkSize, stdin);
+            nextWrite += chunkSize;
+            messageLen += chunkSize + 1;
         }
 
-        sendHello();
-        last_connect_attempt_time = time(NULL);
+        PendingMessage* thisMessage;
+
+        if(pros::c::queue_recv(vsq->AvailablePool, &thisMessage, TIMEOUT_MAX)){
+            deserializeMsg(formatBuffer, thisMessage->messagebuff, messageLen);
+            thisMessage->messageLen = messageLen - 1;
+            
+            //should never block?
+            pros::c::queue_append(vsq->ReceivePool, thisMessage, TIMEOUT_MAX);
+        }else{
+            // the recv was cancelled
+            // the program is probably tearing down
+        }
     }
 }
 
-void VexSerial::disconnect(void){
-    if(clientConnected){
-        sendGoodbye();
+void VexSerial::sendMessage(const uint8_t* const msg, const uint8_t size){
+    if(size > MAX_MESSAGE_LEN){
+        //TODO - proper exception
+        throw "MESSAGE TOO LONG";
+    }
+
+    PendingMessage* thisMessage;
+
+    if(pros::c::queue_recv(vsq.AvailablePool, &thisMessage, TIMEOUT_MAX)){
+        memcpy(thisMessage->messagebuff, msg, size);
+        thisMessage->messageLen = size;
+
+        //should never block
+        pros::c::queue_append(vsq.SendingPool, thisMessage, TIMEOUT_MAX);
+    }else{
+        // the recv was cancelled
+        // the program is probably tearing down
     }
 }
 
-VexSerial * const VexSerial::v_ser = new VexSerial();
+bool VexSerial::receiveMessage(uint8_t* const recv_out, uint8_t& size_out, uint32_t timeout){
+    PendingMessage* thisMessage;
+    if(pros::c::queue_recv(vsq.ReceivePool, &thisMessage, timeout)){
+        memcpy(recv_out, thisMessage->messagebuff, thisMessage->messageLen);
+        size_out = thisMessage->messageLen;
 
-void receiveDataWrapper(void* params){
-    //return;
-    return VexSerial::v_ser->receiveData();
+        //should never block
+        pros::c::queue_append(vsq.AvailablePool, thisMessage, TIMEOUT_MAX);
+        return true;
+    }else{
+        return false;
+    }
 }

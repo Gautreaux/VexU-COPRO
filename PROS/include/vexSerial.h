@@ -1,18 +1,9 @@
 #include "main.h"
-#include <time.h>
 
-#define STREAM_BUFFER_SZ 256
-
-#define VEX_SERIAL_VERBOSE
-
-#define HELLO_MSG '\x00'
-#define HELLO_ACK_MSG '\x01'
-#define GOODBYE_MSG '\x09'
-#define GOODBYE_ACK_MSG '\x0A'
-#define ECHO_SIG '\x02'
-#define ECHO_ACK_SIG '\x03'
-#define SYNC_MSG '\x04'
-#define SYNC_ACK_MSG '\x05'
+#define MAX_MESSAGE_LEN 100
+#define STREAM_SZ_REQUIRED (MAX_MESSAGE_LEN + 2)
+#define MAX_MESSAGES_IN_FLIGHT 10
+#define ILLEGAL_CHAR 'p'
 
 class VexSerial;
 
@@ -20,43 +11,64 @@ using CallbackFunctionType = void (*) (const uint8_t * const, const uint8_t);
 
 class VexSerial {
 private:
-    bool taskOk;
-    bool clientConnected;
-    CallbackFunctionType callback;
-    pros::Task receiveTask;
+    struct PendingMessage
+    {
+        //message len including padding
+        uint8_t messageLen;
 
-    time_t last_connect_attempt_time;
+        uint8_t messagebuff[MAX_MESSAGE_LEN+1];
+        //+1 for safety null character
 
-    char strBuff[STREAM_BUFFER_SZ];
+        PendingMessage(void);
+    };
 
-    void sendHello(void);
-    void sendHelloAck(void);
-    void sendGoodbye(void);
-    void sendGoodbyeAck(void);
+    struct VexSerialQueues
+    {
+        const pros::c::queue_t AvailablePool;
+        const pros::c::queue_t SendingPool;
+        const pros::c::queue_t ReceivePool; 
+        bool Running;   
 
-    // void sendEcho(const uint8_t* const buffer, const uint8_t size);
-    void sendEchoAck(void);
+        VexSerialQueues(pros::c::queue_t a, pros::c::queue_t s, pros::c::queue_t r);
+        ~VexSerialQueues(void);
+    };
 
-    // void sendSync(const uint8_t data);
-    void sendSyncAck(void);
+    PendingMessage messagePool[MAX_MESSAGES_IN_FLIGHT];
 
-    void receiveControl(void);
+    const VexSerialQueues vsq;
+
+    //tasks for sending and receiving
+    pros::Task sendTask;
+    pros::Task recvTask;
+
+    //size should not include trailing null character
+    //  but trailing null should probably be present for safety
+    static void serializeMsg(const uint8_t* const msg, uint8_t* dst, const uint8_t size);
+    static void deserializeMsg(const uint8_t* const ser_msg, uint8_t* dst, const uint8_t size);
+
+    //DO NOT CALL DIRECTLY
+    static void VexSerialSender(void* params);
+    static void VexSerialReceiver(void* params);
 
     VexSerial(void);
     ~VexSerial();
 public:
     static VexSerial* const v_ser;
-    void sendData(const uint8_t* const buff, const size_t size);
-    void receiveData(void);
 
-    inline void setCallback(CallbackFunctionType c){
-        callback = c;
+    //enqueue a message to be sent
+    //  message len <= MAX_MESSAGE_LEN
+    //  len does not include null terminator and 
+    //      one is not needed
+    void sendMessage(const uint8_t* const msg, const uint8_t size);
+
+    //receive a message of len <= MAX
+    //  returns true if recv succeeded, 
+    //      false if timeout was exceeded
+    //  timeout = 0 --> receive if avaliable
+    //  TIMEOUT_MAX --> wait forever
+    bool receiveMessage(uint8_t* const recv_out, uint8_t& size_out, uint32_t timeout = TIMEOUT_MAX);
+
+    inline bool receiveMessageIfAvailable(uint8_t* const recv_out, uint8_t& size_out){
+        return receiveMessage(recv_out, size_out, 0);
     }
-    
-    void tryConnect(const int min_s_retry = 1, const bool block = false);
-    void disconnect(void);
-
-    inline bool isConnected(void) { return clientConnected; }
 };
-
-void receiveDataWrapper(void* params);
