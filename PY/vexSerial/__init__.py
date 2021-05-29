@@ -14,6 +14,7 @@ _vexSerialCallback : Callable[[bytes], None] = None
 _echoCallback : Callable[[bytes], None] = None
 _connectedEvent = threading.Event()
 _disconnectedEvent = threading.Event()
+_serialMutex = threading.Lock()
 _syncEvents = {}
 
 MAX_RETRIES = 5
@@ -65,6 +66,7 @@ def _sendControlMessage(msg : bytes) -> None:
 
 def _messageSender() -> None:
     global _connected
+    global _serialMutex
     global _syncEvent
     global _outboundMessages
     while threading.current_thread().is_alive:
@@ -88,9 +90,11 @@ def _messageSender() -> None:
             elif _connected and m is GOODBYE_ACK_MSG:
                 print("VexSerial:Sending goodbye ack")
 
+            _serialMutex.acquire()
             t = b"\x00" + m
-            print(f"VexSerial::sending control: {t}")
+            print(f"VexSerial::sending control:({len(t)}) {t}")
             v_ser.write(b"\x00" + m)
+            _serialMutex.release()
 
             if m is HELLO_ACK_MSG:
                 _setConnected()
@@ -108,12 +112,14 @@ def _messageSender() -> None:
 
         print(f"VexSerial:Sending msg: ({len(m)}) {m}")
 
+        _serialMutex.acquire()
         offset = 0
         while offset < len(m):
             thisSize = min(255, len(m) - offset)
             print(f"  VexSerial:Sending: {bytes(itertools.chain([thisSize], m[offset:(offset+thisSize)]))}")
             v_ser.write(bytes(itertools.chain([thisSize], m[offset:(offset+thisSize)])))
             offset += thisSize
+        _serialMutex.release()
 
 def _processEcho() -> None:
     len = v_ser.read()
@@ -123,7 +129,9 @@ def _processEcho() -> None:
 def _processEchoAck() -> None:
     global _echoCallback
     len = v_ser.read()[0]
+    print(f"Echo ack len: {len}")
     msg = v_ser.read(len)
+    print(f"Echo ack msg: {msg}")
     if _echoCallback is not None:
         _echoCallback(msg)
 
@@ -133,7 +141,9 @@ def _processSync() -> None:
 
 def _processSyncAck() -> None:
     global _syncEvents
+    print("SYN ACK READING")
     val = v_ser.read()
+    print(f"SYN ACLK READ {val}")
     print(f"VexSerial:got sync ack value: {val}")
     if val in _syncEvents:
         _syncEvents[val].set()
@@ -142,13 +152,20 @@ def _processSyncAck() -> None:
 
 def _messageReceiver() -> None:
     global _connected
-    global _syncEvent
+    global _serialMutex
     global _vexSerialCallback
     while threading.current_thread().is_alive:  
+        _serialMutex.acquire()
         b = v_ser.read()
+        if len(b) == 0:
+            _serialMutex.release()
+            continue
+
         if b[0] == 0:
+            print("RECV control")
             # control sequence
             bb = v_ser.read()
+            print(f"Control seq: {bb}")
             if bb == HELLO_MSG:
                 print("VexSerial:Received hello")
                 _sendControlMessage(HELLO_ACK_MSG)
@@ -166,13 +183,17 @@ def _messageReceiver() -> None:
             elif bb == SYNC_MSG:
                 _processSync()
             elif bb == SYNC_ACK_MSG:
+                print("RECV syn ack")
                 _processSyncAck()
             elif bb == ECHO_SIG:
                 _processEcho()
             elif bb == ECHO_ACK_SIG:
+                print("RECV echo ack")
                 _processEchoAck()
             else:
                 print(f"Unrecognized control cod: {bb}")
+
+            _serialMutex.release()
             continue
         
         print(f"Reading message of length: {b[0]}")
@@ -181,6 +202,8 @@ def _messageReceiver() -> None:
             print(f"WARNING: expected message of length {b[0]} got length {len(bb)} instead")
         if _vexSerialCallback is not None:
             _vexSerialCallback(bb)
+        
+        _serialMutex.release()
 
 def VexSerialDefaultCallback(m : bytes):
     print(m, flush=True)
@@ -189,7 +212,7 @@ def setVexSerialCallback(func : Callable[[bytes], None]) -> None:
     global _vexSerialCallback
     _vexSerialCallback = func
 
-def _setEchoCallback(func : Callable[[bytes], None]) -> None:
+def setEchoCallback(func : Callable[[bytes], None]) -> None:
     global _echoCallback
     _echoCallback = func
 
@@ -234,7 +257,7 @@ while retryCtr < MAX_RETRIES:
     try:
         port = getVexComPort()
         print(f"Resolved vex com port to: {port}")
-        v_ser : serial = serial.Serial(port=port, baudrate=115200)
+        v_ser : serial = serial.Serial(port=port, baudrate=115200, xonxoff=True, timeout=.05)
         retryCtr = None
         _setDisconnected()
         print("Successfully opened serial port...")

@@ -1,5 +1,5 @@
 import itertools
-from . import ECHO_SIG, VexSerialWaitStreamSync, _sendControlMessage, _setEchoCallback
+from . import ECHO_SIG, VexSerialWaitStreamSync, _sendControlMessage, setEchoCallback
 import random
 from time import sleep
 
@@ -12,7 +12,7 @@ def testRandomDatagram(testSize : int = DEFAULT_TEST_SIZE):
     resBytes = []
     def echoCallback(rBytes : bytes) -> None:
         resBytes.append(rBytes)
-    _setEchoCallback(echoCallback)
+    setEchoCallback(echoCallback)
 
     exRounds = (len(myBytes) + 252) // 253
     print(f"Expected rounds = {exRounds}")
@@ -35,3 +35,4 @@ def testRandomDatagram(testSize : int = DEFAULT_TEST_SIZE):
     response = bytes(itertools.chain.from_iterable(resBytes))
 
     print(f"Result: {response == myBytes}")
+    assert(response == myBytes)

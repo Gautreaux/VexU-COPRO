@@ -3,7 +3,7 @@
 
 #define STREAM_BUFFER_SZ 256
 
-//#define VEX_SERIAL_VERBOSE
+#define VEX_SERIAL_VERBOSE
 
 #define HELLO_MSG '\x00'
 #define HELLO_ACK_MSG '\x01'

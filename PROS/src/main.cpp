@@ -47,8 +47,8 @@ void autonomous() {}
  * Runs reading of code
  */
 void readCallback(const uint8_t * const buff, const uint8_t sz) {
-	pros::lcd::print(6, "(%d) %s", sz, buff);
-	pros::delay(1500);
+	pros::lcd::print(5, "(%d) %s", sz, buff);
+	pros::delay(1000);
 }
 
 /**
