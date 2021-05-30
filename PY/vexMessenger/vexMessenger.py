@@ -26,7 +26,9 @@ class VexMessenger():
     #     MESSAGE_TYPE_HELLO = 1,
     #     MESSAGE_TYPE_HELLO_ACK = 2,
     #     MESSAGE_TYPE_GOODBYE = 3,
-    #     MESSAGE_TYPE_GOODBYE_ACK = 4
+    #     MESSAGE_TYPE_GOODBYE_ACK = 4,
+    #     MESSAGE_TYPE_ECHO = 5,
+    #     MESSAGE_TYPE_ECHO_ACK = 6
 
     class _Message():
         def __init__(self, bytesLike : bytes, msgType : int = 0) -> None:
@@ -35,6 +37,9 @@ class VexMessenger():
 
         def as_bytes(self) -> bytes:
             return bytes(itertools.chain(self.header.iterate(), self.data))
+
+    class UnexpectedDisconnection(Exception):
+        pass
     
     def __init__(self) -> None:
         self._is_connected = False
@@ -49,7 +54,7 @@ class VexMessenger():
     # returns None if message could not be recieved in time 
     def _receive_message(self, timeout_s : float = TIMEOUT_MAX) -> Optional['VexMessenger._Message']:
         msg = v_ser.receiveMessage(timeout_s)
-        print(f"Recieved binary: {msg}")
+        # print(f"Recieved binary: {msg}")
         if msg is None:
             return None
         else:
@@ -84,6 +89,34 @@ class VexMessenger():
             else:
                 timeRemaining = timeout_s - (time.time() - startTime)
 
+    def _handle_control(self, msg : 'VexMessenger._Message'):
+        if msg.header.msgType == 1:
+            # HELLO
+            msg.header.msgType = 2
+            self._send_message(msg)
+            self._is_connected = True
+        elif msg.header.msgType == 2:
+            # HELLO_ACK
+            self._is_connected = True
+        elif msg.header.msgType == 3:
+            # GOODBYE
+            msg.header.msgType = 4
+            self._send_message(msg)
+            self._is_connected = False
+        elif msg.header.msgType == 4:
+            # GOODBYE_ACK
+            self._is_connected = False
+        elif msg.header.msgType == 5:
+            # ECHO
+            msg.header.msgType = 6
+            self._send_message(msg)
+        elif msg.header.msgType == 6:
+            # ECHO_ACK
+            # TODO - implement something here
+            pass
+        else:
+            raise ValueError(f"Illegal control code: {msg.header.msgType}")
+
     def isConnected(self) -> bool:
         return self._is_connected
     
@@ -105,3 +138,44 @@ class VexMessenger():
     #   destroys all pending messages
     def disconnect(self):
         self.try_disconnect(TIMEOUT_MAX)
+
+    # read messages until a data message
+    #  returns true if a message was successfully read
+    #  returns false if a disconnect occurs before timeout
+    #  returns false if a timeout occurs before the next data message
+    #  immediately returns false if disconnected
+    def readDataMessage(self, timeout_s : float) -> Optional[bytes] :
+        timeRemaining = timeout_s
+        startTime = time.time()
+
+        while(self._is_connected):
+            m : VexMessenger._Message = self._receive_message(timeRemaining)
+
+            if m is None:
+                # Timeout occurred
+                return False
+            elif m.header.msgType == 0:
+                return m.data
+            else:
+                self._handle_control(m)
+                timeRemaining = timeout_s - (time.time() - startTime)
+        return False
+
+    # read messages until a data message
+    #  will throw UnexpectedDisconnection if disconnected data message
+    #    or if called while disconnected
+    def readDataMessageBlocking(self) -> bytes :
+        m = self.readDataMessage(TIMEOUT_MAX)
+        if m is None:
+            raise VexMessenger.UnexpectedDisconnection()
+        return m
+
+    def readIfAvailable(self) -> Optional[bytes]:
+        return self.readDataMessage(0)
+
+    # send a data message to the other side
+    #   may throw UnexpectedDisconnection if disconnected
+    def sendMessage(self, msg : bytes):
+        if self._is_connected == False:
+            raise VexMessenger.UnexpectedDisconnection()
+        self._send_message(VexMessenger._Message(msg, msgType=0))

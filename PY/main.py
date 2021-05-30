@@ -1,4 +1,4 @@
-# from .vexSerial import v_ser
+from .vexSerial import v_ser
 # from .vexSerial.vexSerialTest import wordTest, bytesTest
 from .vexMessenger import v_messenger
 from .CV import cv_main
@@ -9,7 +9,10 @@ def main():
 
     v_messenger.connect()
     print("Messenger connected")
-    time.sleep(5)
+    time.sleep(2)
+    # v_ser.sendMessage(b"\x09\x00\x00\x00apple")
+    v_messenger.sendMessage(b"Apples Rock")
+    time.sleep(2)
     v_messenger.disconnect()
     print("Messenger disconnected")
 

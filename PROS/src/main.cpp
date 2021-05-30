@@ -92,7 +92,11 @@ void opcontrol() {
 
 		if(VexMessenger::v_messenger->isConnected()){
 			pros::lcd::print(1, "VEX_Messenger Connected!");
-			pros::delay(20);
+
+			if(VexMessenger::v_messenger->readDataMessage(recvBuffer, msgLen, 50)){
+				recvBuffer[msgLen] = 0; //add null terminator
+				pros::lcd::print(6, "%s", recvBuffer);
+			}
 		}
 		else{
 			pros::lcd::print(1, "VEX_Messenger %s",
