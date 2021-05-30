@@ -1,16 +1,18 @@
-from .vexSerial import v_ser
-from .vexSerial.vexSerialTest import wordTest, bytesTest
+# from .vexSerial import v_ser
+# from .vexSerial.vexSerialTest import wordTest, bytesTest
 
-from time import sleep
+from .CV import cv_main
 
 def main():
 
-    wordTest()
-    print("Word test done")
-    bytesTest()
-    print()
-    print("Byte test done")
-    print("Test concluded successfully")
+    cv_main()
+
+    # wordTest()
+    # print("Word test done")
+    # bytesTest()
+    # print()
+    # print("Byte test done")
+    # print("Test concluded successfully")
 
 if __name__ == "__main__":
     # this file was run directly
