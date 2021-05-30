@@ -1,6 +1,7 @@
 #include "main.h"
 // #include "vexSerial.h"
 #include "vexMessenger.h"
+#include "util.h"
 
 /**
  * Runs initialization code. This occurs as soon as the program is started.
@@ -10,6 +11,23 @@
  */
 void initialize() {
 	pros::lcd::initialize();
+
+	//initialize the motors:
+	//TODO - does the gearing/encoder setting matter?
+	leftDrive.emplace_back(LEFT_DRIVE_MOTOR_1_PORT, true);
+	leftDrive.emplace_back(LEFT_DRIVE_MOTOR_2_PORT, true);
+	leftDrive.emplace_back(LEFT_DRIVE_MOTOR_3_PORT, true);
+
+	rightDrive.emplace_back(RIGHT_DRIVE_MOTOR_1_PORT, false);
+	rightDrive.emplace_back(RIGHT_DRIVE_MOTOR_2_PORT, false);
+	rightDrive.emplace_back(RIGHT_DRIVE_MOTOR_3_PORT, false);
+
+	intake.emplace_back(LEFT_INTAKE_MOTOR_PORT, false);
+	intake.emplace_back(RIGHT_INTAKE_MOTOR_PORT, true);
+
+	rollers.emplace_back(MIDDLE_ROLLER_MOTOR_1_PORT, false);
+	rollers.emplace_back(MIDDLE_ROLLER_MOTOR_2_PORT, false);
+	rollers.emplace_back(TOP_ROLLER_MOTOR_PORT, false);
 }
 
 /**
@@ -102,6 +120,30 @@ void opcontrol() {
 			pros::lcd::print(1, "VEX_Messenger %s",
 				((VexMessenger::v_messenger->try_connect(200)) ? ("Connection Success!") : ("Connection Failed."))
 			);
+		}
+
+		if(master.is_connected()){
+			pros::lcd::print(4, "Controller Connected");
+
+			int32_t leftY = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
+			int32_t rightY = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y);
+			updateDrive(leftY, rightY);
+
+			if(master.get_digital(pros::E_CONTROLLER_DIGITAL_R2)){
+				updateMotorGroup(intake, 127);
+			}else if(master.get_digital(pros::E_CONTROLLER_DIGITAL_R1)){
+				updateMotorGroup(intake, -127);
+			}else{
+				updateMotorGroup(intake, 0);
+			}
+
+			if(master.get_digital(pros::E_CONTROLLER_DIGITAL_L2)){
+				updateMotorGroup(rollers, 127);
+			}else if(master.get_digital(pros::E_CONTROLLER_DIGITAL_L1)){
+				updateMotorGroup(rollers, -127);
+			}else{
+				updateMotorGroup(rollers, 0);
+			}
 		}
 	}
 }
