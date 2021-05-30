@@ -1,5 +1,6 @@
 #include "main.h"
-#include "vexSerial.h"
+// #include "vexSerial.h"
+#include "vexMessenger.h"
 
 /**
  * Runs initialization code. This occurs as soon as the program is started.
@@ -62,29 +63,41 @@ void opcontrol() {
 	uint8_t msgLen;
 	uint8_t recvBuffer[MAX_MESSAGE_LEN];
 
+	pros::lcd::print(1, "VEX_Messenger ---");
+
 	while (true) {
 		pros::lcd::print(0,"Hello");
-		if(VexSerial::v_ser->receiveMessageIfAvailable(recvBuffer, msgLen))
-		{
-			pros::lcd::print(
-				nextLine, "(%03d) %02X %02X %02X %02X  %02X %02X %02X %02X",
-				msgLen, 
-				recvBuffer[0], recvBuffer[1],
-				recvBuffer[2], recvBuffer[3],
-				recvBuffer[4], recvBuffer[5],
-				recvBuffer[6], recvBuffer[7]
-			);
+		// if(VexSerial::v_ser->receiveMessageIfAvailable(recvBuffer, msgLen))
+		// {
+		// 	pros::lcd::print(
+		// 		nextLine, "(%03d) %02X %02X %02X %02X  %02X %02X %02X %02X",
+		// 		msgLen, 
+		// 		recvBuffer[0], recvBuffer[1],
+		// 		recvBuffer[2], recvBuffer[3],
+		// 		recvBuffer[4], recvBuffer[5],
+		// 		recvBuffer[6], recvBuffer[7]
+		// 	);
 
-			nextLine = (nextLine + 1); // fast mod8
-			if(nextLine >= 8){
-				nextLine = 4;
-			}
+		// 	nextLine = (nextLine + 1); // fast mod8
+		// 	if(nextLine >= 8){
+		// 		nextLine = 4;
+		// 	}
 
-			VexSerial::v_ser->sendMessage(recvBuffer, msgLen);
-		}else{
-			pros::lcd::print(0, "VSER_false");
+		// 	VexSerial::v_ser->sendMessage(recvBuffer, msgLen);
+		// }else{
+		// 	pros::lcd::print(0, "VSER_false");
+		// }
+
+		// pros::delay(20);
+
+		if(VexMessenger::v_messenger->isConnected()){
+			pros::lcd::print(1, "VEX_Messenger Connected!");
+			pros::delay(20);
 		}
-
-		pros::delay(20);
+		else{
+			pros::lcd::print(1, "VEX_Messenger %s",
+				((VexMessenger::v_messenger->try_connect(200)) ? ("Connection Success!") : ("Connection Failed."))
+			);
+		}
 	}
 }

@@ -76,6 +76,9 @@ private:
 public:
     static VexSerial* const v_ser;
 
+    VexSerial(VexSerial const&) = delete;
+    void operator=(VexSerial const&) = delete;
+
     //enqueue a message to be sent
     //  message len <= MAX_MESSAGE_LEN
     //  len does not include null terminator and 
