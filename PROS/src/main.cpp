@@ -58,11 +58,12 @@ void autonomous() {}
 void opcontrol() {
 	pros::Controller master(pros::E_CONTROLLER_MASTER);
 
-	uint8_t nextLine = 0;
+	uint8_t nextLine = 4;
 	uint8_t msgLen;
 	uint8_t recvBuffer[MAX_MESSAGE_LEN];
 
 	while (true) {
+		pros::lcd::print(0,"Hello");
 		if(VexSerial::v_ser->receiveMessageIfAvailable(recvBuffer, msgLen))
 		{
 			pros::lcd::print(
@@ -71,7 +72,14 @@ void opcontrol() {
 				recvBuffer[2], recvBuffer[3]
 			);
 
-			nextLine = (nextLine + 1) & (7); // fast mod8
+			nextLine = (nextLine + 1); // fast mod8
+			if(nextLine >= 6){
+				nextLine = 4;
+			}
+
+			VexSerial::v_ser->sendMessage(recvBuffer, msgLen);
+		}else{
+			pros::lcd::print(0, "VSER_false");
 		}
 
 		pros::delay(20);

@@ -33,9 +33,9 @@ private:
         ~VexSerialQueues(void);
     };
 
-    PendingMessage messagePool[MAX_MESSAGES_IN_FLIGHT];
+    static PendingMessage messagePool[MAX_MESSAGES_IN_FLIGHT];
 
-    const VexSerialQueues vsq;
+    static const VexSerialQueues vsq;
 
     //tasks for sending and receiving
     pros::Task sendTask;
@@ -49,6 +49,27 @@ private:
     //DO NOT CALL DIRECTLY
     static void VexSerialSender(void* params);
     static void VexSerialReceiver(void* params);
+
+    // inline static void VexSerialSender(void* params){
+    //     uint64_t ctr = 0;
+    //     while (true)
+    //     {
+    //         pros::lcd::print(2, "Sender %d", ctr);
+    //         ctr++;
+    //         pros::delay(50);
+    //     }
+    // }
+    // inline static void VexSerialReceiver(void* params){
+    //     uint64_t ctr = 0;
+    //     while (true)
+    //     {
+    //         pros::lcd::print(3, "Receiver %d", ctr);
+    //         ctr++;
+    //         pros::delay(30);
+    //     }
+    // }
+
+    static void setup(void);
 
     VexSerial(void);
     ~VexSerial();

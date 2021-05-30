@@ -1,8 +1,16 @@
+from threading import TIMEOUT_MAX
 from typing import Optional, List
 import serial.tools.list_ports
 from serial.tools.list_ports_common import ListPortInfo
 
+MAX_MESSAGE_LEN = 100
+ILLEGAL_CHAR = 'p'
+TIMEOUT_MAX = None
+
 class DeviceResolutionFailed(Exception):
+    pass
+
+class MessageTooLong(Exception):
     pass
 
 # prints the port info or headers on none
