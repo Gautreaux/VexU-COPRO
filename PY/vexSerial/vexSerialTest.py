@@ -1,39 +1,7 @@
-from .vexSerial import _serializeMsg, _deserializeMsg, _serializeGenerator, _deserializeGenerator
-
-DEFAULT_TEST_SIZE = 10*(2**20) # 10MB
-
-# TODO - rework this mess
-# def testRandomDatagram(testSize : int = DEFAULT_TEST_SIZE):
-#     print(f"Testing random data of size {testSize}")
-#     myBytes = random.randbytes(testSize)
-
-#     resBytes = []
-#     def echoCallback(rBytes : bytes) -> None:
-#         resBytes.append(rBytes)
-#     setEchoCallback(echoCallback)
-
-#     exRounds = (len(myBytes) + 252) // 253
-#     print(f"Expected rounds = {exRounds}")
-#     roundCounter = 0
-
-#     offset = 0
-#     while offset < len(myBytes):
-#         thisSize = min(253, len(myBytes) - offset)
-#         _sendControlMessage(bytes(itertools.chain([*ECHO_SIG, thisSize], myBytes[offset:(offset+thisSize)])))
-#         sleep(1)
-#         offset += thisSize
-#         roundCounter += 1
-#         if(roundCounter % 250 == 0):
-#             print(f"{roundCounter}/{exRounds}, responses received = {len(resBytes)}")
-    
-#     print(f"Done Sending, syncing")
-#     VexSerialWaitStreamSync(random.randbytes(1))
-#     print(f"Done syncing")
-
-#     response = bytes(itertools.chain.from_iterable(resBytes))
-
-#     print(f"Result: {response == myBytes}")
-#     assert(response == myBytes)
+import time
+from .vexSerial import (_serializeMsg, _deserializeMsg, _serializeGenerator, _deserializeGenerator)
+from . import v_ser
+from random import randbytes
 
 def testSerializeDeserialize():
     msgSerialPairs = [
@@ -60,3 +28,45 @@ def testSerializeDeserialize():
     
     print("Serialize ok")
     print("SER/DSER PASSING!!!")
+
+def wordTest():
+    s = "apple lap penguin Antimodernistic bloomiest unculture squamosely prejudicial imbrown bimbo consonantize. Focalize danny arteriosclerosis proboxing hyperemotivity faro pompous haeres. Nonusurious euphonicalness pseudocatholically diverging unvenerated catania disgrace keratose. Philomela pettishness multispermous leukopenia effacer canephora kabala hopsack. Wavell clumsily barolo endocrinologic advanced moseyed eiffel narcomaniacal. Lulu pairle interlibelled enate bottleneck gossamery penanceless blackamoor. Sudor kisumu ratatouille jumbled jacinth findlay saltness kean. Sunlit surabaya holdable rowen moonlight pokier patchstand peppery. Discontinue boronic authoriser repellency prouniversity homothermism virginis sacristan. Proud wran cetological skein kuban uncatastrophically innervate subtriangularity. Lounging unchaste unapostrophized stouthearted cleanthes shrilly harebell berme. Nonguaranty nonresilience zipper auscultate shoji unhelved sinful mazedly. Lah electrotactic valdosta overactivate clois unpunctilious disguising mistiest. Granite tanana courses domorphous thug isn''t mir sandstone. Pontificals loxodromics dingily interwreathed unsystematising mismated immeasurable eudaemonistical. Geographical prenotifying dorsiventrality overproved gnawable radicalness charleton outdriven. Uncentralized estivation cartwheel nemesis noncrystallized mealies aerosphere intercommunity. Burrstone revivable pharmaceutical undersplicing inconsiderably prepolitic sutra cartelism. Oophorectomize zool calliste describing kingman jamaica wattenscheid navasota. Blusterous forbye lobscourse frugality overarch quinidine hadhramaut furmenty."
+    s = s.replace('.', '').split(" ")
+
+    for k in s:
+        k = bytes(k, encoding="ascii")
+        v_ser.sendMessage(k)
+        m,_ = v_ser.receiveMessage()
+        if(m != k):
+            print(f"Word: {k}")
+            print(f"Sent: {k}")
+            print(f"Recv: {m}")
+            assert(m == k)
+
+def bytesTest():
+    TOTAL_BYTES = 8*(2**20) # 8 MB
+    
+    rounds = (TOTAL_BYTES // 100) + 1
+
+    nextReport = 0
+    reportFreq = .005 # every 0.5%
+
+    startTime = time.time() 
+
+    for i in range(rounds):
+        k = randbytes(100)
+        v_ser.sendMessage(k)
+        m,_ = v_ser.receiveMessage()
+        if(m != k):
+            print(f"Sent: {k}")
+            print(f"Recv: {m}")
+            assert(m == k)
+
+        p = i / rounds
+        if p > nextReport:
+            nextReport += reportFreq
+            elapsed = time.time() - startTime
+            print(f"{round(p*100,2)}% complete, {100*i} bytes, {round(elapsed, 2)} sec, {round(100*i/(elapsed * 1024), 4)} Kbps")
+        
+    elapsed = time.time() - startTime
+    print(f"Sent {round((rounds * 100)/(1024), 2)} Kilobytes without error in {round(elapsed,2)} sec, approx speed: {round((rounds*100)/(1024*elapsed), 4)} Kbps")

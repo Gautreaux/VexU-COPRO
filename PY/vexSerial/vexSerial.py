@@ -76,7 +76,7 @@ def _VexSerialSender():
     global _v_ser_serial_object
     while _SEND_RCV_RUNNING:
         m = _SENDING_Q.get()
-        print(f"Sending: {_serializeMsg(m)}")
+        # print(f"Sending: {_serializeMsg(m)}")
         _v_ser_serial_object.write(_serializeMsg(m))
         _v_ser_serial_object.flush()
 
@@ -89,8 +89,8 @@ def _VexSerialReceiver():
         chunks.append(bytes(c))
         while (c := int(chunks[-1][-1])) != 0:
             chunks.append(_v_ser_serial_object.read(size=c))
-        print(chunks)
-        print(f"Received binary: {bytes(itertools.chain.from_iterable(chunks))}")
+        # print(f"Received chunks: {chunks}")
+        # print(f"Received binary: {bytes(itertools.chain.from_iterable(chunks))}")
         _RECEIVE_Q.put(_deserializeMsg(itertools.chain.from_iterable(chunks)))
 
 

@@ -67,13 +67,16 @@ void opcontrol() {
 		if(VexSerial::v_ser->receiveMessageIfAvailable(recvBuffer, msgLen))
 		{
 			pros::lcd::print(
-				nextLine, "(%03d) %02X %02X %02X %02X",
-				msgLen, recvBuffer[0], recvBuffer[1],
-				recvBuffer[2], recvBuffer[3]
+				nextLine, "(%03d) %02X %02X %02X %02X  %02X %02X %02X %02X",
+				msgLen, 
+				recvBuffer[0], recvBuffer[1],
+				recvBuffer[2], recvBuffer[3],
+				recvBuffer[4], recvBuffer[5],
+				recvBuffer[6], recvBuffer[7]
 			);
 
 			nextLine = (nextLine + 1); // fast mod8
-			if(nextLine >= 6){
+			if(nextLine >= 8){
 				nextLine = 4;
 			}
 

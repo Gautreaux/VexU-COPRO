@@ -1,13 +1,16 @@
 from .vexSerial import v_ser
+from .vexSerial.vexSerialTest import wordTest, bytesTest
 
 from time import sleep
 
 def main():
 
-    v_ser.sendMessage(b"unicorn")
-    msg = v_ser.receiveMessage()
-    print(f"Received message: {msg}")
-    pass
+    wordTest()
+    print("Word test done")
+    bytesTest()
+    print()
+    print("Byte test done")
+    print("Test concluded successfully")
 
 if __name__ == "__main__":
     # this file was run directly
