@@ -3,7 +3,7 @@
 
 class VexMessenger
 {
-public:
+private:
     struct MessageHeader
     {
         uint8_t len;
@@ -32,7 +32,6 @@ public:
         MESSAGE_TYPE_GOODBYE_ACK = 4
     };
 
-private:
     bool is_connected;
 
     VexMessenger(void);

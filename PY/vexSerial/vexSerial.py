@@ -1,7 +1,7 @@
 import itertools
-from threading import TIMEOUT_MAX, Thread
+from threading import TIMEOUT_MAX
 import threading
-from typing import Tuple, Optional
+from typing import Optional
 import serial
 from time import sleep
 import queue
@@ -132,19 +132,19 @@ class VexSerial():
             raise MessageTooLong()
         _SENDING_Q.put(msg)
 
-    def receiveMessage(self, timeout_s = TIMEOUT_MAX) -> Tuple[Optional[bytes], bool]:
+    def receiveMessage(self, timeout_s = TIMEOUT_MAX) -> Optional[bytes]:
         try:
             m = _RECEIVE_Q.get(block=True, timeout=timeout_s)
-            return (m, True)
+            return m
         except queue.Empty:
-            return (None, False)
+            return None
     
-    def receiveMessageIfAvailable(self) -> Tuple[Optional[bytes], bool]:
+    def receiveMessageIfAvailable(self) -> Optional[bytes]:
         try:
             m = _RECEIVE_Q.get_nowait()
-            return (m,True)
+            return m
         except queue.Empty:
-            return (None, False)
+            return None
 
     def teardown():
         #attempt a clean exit

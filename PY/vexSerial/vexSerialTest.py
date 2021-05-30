@@ -36,7 +36,7 @@ def wordTest():
     for k in s:
         k = bytes(k, encoding="ascii")
         v_ser.sendMessage(k)
-        m,_ = v_ser.receiveMessage()
+        m = v_ser.receiveMessage()
         if(m != k):
             print(f"Word: {k}")
             print(f"Sent: {k}")
@@ -56,7 +56,7 @@ def bytesTest():
     for i in range(rounds):
         k = randbytes(100)
         v_ser.sendMessage(k)
-        m,_ = v_ser.receiveMessage()
+        m = v_ser.receiveMessage()
         if(m != k):
             print(f"Sent: {k}")
             print(f"Recv: {m}")

@@ -7,7 +7,7 @@ VexMessenger::VexMessenger(void) : is_connected(false)
 VexMessenger::~VexMessenger(void)
 {
     if(isConnected()){
-        try_disconnect();
+        try_disconnect(200);
     }
 }
 
@@ -26,7 +26,7 @@ bool VexMessenger::try_cycle(uint32_t const timeout_ms, bool const isConnect){
     uint32_t const startMillis = pros::millis();
 
     while(isConnected() != isConnect){
-        send_message(&out_message);
+        send_message(&out_message); // potentially a little spammy
         if(receive_message(&response_message, timeRemaining)){
             if(response_message.header.msgType == in){
                 is_connected = isConnect;
