@@ -45,8 +45,9 @@ def wordTest():
 
 def bytesTest():
     TOTAL_BYTES = 8*(2**20) # 8 MB
+    BYTES_PER_MESSAGE = 100
     
-    rounds = (TOTAL_BYTES // 100) + 1
+    rounds = (TOTAL_BYTES // BYTES_PER_MESSAGE) + 1
 
     nextReport = 0
     reportFreq = .005 # every 0.5%
@@ -54,7 +55,7 @@ def bytesTest():
     startTime = time.time() 
 
     for i in range(rounds):
-        k = randbytes(100)
+        k = randbytes(BYTES_PER_MESSAGE)
         v_ser.sendMessage(k)
         m = v_ser.receiveMessage()
         if(m != k):
@@ -66,7 +67,7 @@ def bytesTest():
         if p > nextReport:
             nextReport += reportFreq
             elapsed = time.time() - startTime
-            print(f"{round(p*100,2)}% complete, {100*i} bytes, {round(elapsed, 2)} sec, {round(100*i/(elapsed * 1024), 4)} Kbps")
+            print(f"{round(p*BYTES_PER_MESSAGE,2)}% complete, {BYTES_PER_MESSAGE*i} bytes, {round(elapsed, 2)} sec, {round(BYTES_PER_MESSAGE*i/(elapsed * 1024), 4)} Kbps")
         
     elapsed = time.time() - startTime
-    print(f"Sent {round((rounds * 100)/(1024), 2)} Kilobytes without error in {round(elapsed,2)} sec, approx speed: {round((rounds*100)/(1024*elapsed), 4)} Kbps")
+    print(f"Sent {round((rounds * BYTES_PER_MESSAGE)/(1024), 2)} Kilobytes without error in {round(elapsed,2)} sec, approx speed: {round((rounds*BYTES_PER_MESSAGE)/(1024*elapsed), 4)} Kbps")

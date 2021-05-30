@@ -2,7 +2,7 @@ from enum import Enum, unique
 import itertools
 import time
 from threading import TIMEOUT_MAX
-from typing import Optional
+from typing import Callable, Optional
 from ..vexSerial import v_ser
 
 class VexMessenger():
@@ -43,6 +43,7 @@ class VexMessenger():
     
     def __init__(self) -> None:
         self._is_connected = False
+        self._echoAckCallback = None
     
     def __del__(self) -> None:
         if(self._is_connected):
@@ -88,6 +89,8 @@ class VexMessenger():
                 return True
             else:
                 timeRemaining = timeout_s - (time.time() - startTime)
+                if(timeRemaining < 0):
+                    return False
 
     def _handle_control(self, msg : 'VexMessenger._Message'):
         if msg.header.msgType == 1:
@@ -112,7 +115,8 @@ class VexMessenger():
             self._send_message(msg)
         elif msg.header.msgType == 6:
             # ECHO_ACK
-            # TODO - implement something here
+            if self._echoAckCallback is not None:
+                self._echoAckCallback(msg)
             pass
         else:
             raise ValueError(f"Illegal control code: {msg.header.msgType}")
@@ -159,6 +163,8 @@ class VexMessenger():
             else:
                 self._handle_control(m)
                 timeRemaining = timeout_s - (time.time() - startTime)
+                if timeRemaining < 0:
+                    return False
         return False
 
     # read messages until a data message
@@ -179,3 +185,9 @@ class VexMessenger():
         if self._is_connected == False:
             raise VexMessenger.UnexpectedDisconnection()
         self._send_message(VexMessenger._Message(msg, msgType=0))
+
+    def setEchoAckCallback(self, func_ptr : Callable[['VexMessenger._Message'], None]) -> None:
+        self._echoAckCallback = func_ptr
+
+    def clearEchoAckCallback(self):
+        self._echoAckCallback = None

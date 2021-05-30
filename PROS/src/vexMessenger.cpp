@@ -44,6 +44,10 @@ bool VexMessenger::try_cycle(uint32_t const timeout_ms, bool const isConnect){
                 // probably just noise in the buffer
                 //  just discard it
                 timeRemaining = timeout_ms - (pros::millis() - startTime);
+                if(timeRemaining > timeout_ms){
+                    //under flow occurred
+                    return false;
+                }
             }
         }else{
             //timeout
@@ -101,6 +105,10 @@ bool VexMessenger::readDataMessage(uint8_t * const buff, uint8_t& len, uint32_t 
 
                 //and update time remaining
                 timeRemaining = timeout_ms - (pros::millis() - startTime);
+                if(timeRemaining > timeout_ms){
+                    //under flow occurred
+                    return false;
+                }
             }
         }else{
             //timeout

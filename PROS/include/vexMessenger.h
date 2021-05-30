@@ -115,4 +115,12 @@ public:
         out_msg.header.msgType = static_cast<uint8_t>(VexMessenger::MessageTypes::MESSAGE_TYPE_DATA);
         send_message(&out_msg);
     }
+
+    // NOT Implemented
+    // set the callback function for echo-ack messages
+    // void setEchoAckCallback(function_ptr);
+
+    // NOT Implemented
+    // clear the callback function for echo-ack messages
+    // void clearEchoAckCallback(void);
 };
