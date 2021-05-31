@@ -2,7 +2,7 @@ from .vexSerial import v_ser
 # from .vexSerial.vexSerialTest import wordTest, bytesTest
 from .vexMessenger import v_messenger
 from .vexMessenger.vexMessengerTest import bytesTest
-from .CV import cv_main
+# from .CV import cv_main
 
 import time
 

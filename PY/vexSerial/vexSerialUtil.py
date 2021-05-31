@@ -42,7 +42,7 @@ def getVexComPort() -> str:
 
     portsList = [p for p in portsList if 
         p.manufacturer is not None and "VEX" in p.manufacturer and
-        p.description is not None and "V5 User Port" in p.description
+        p.description is not None and "User Port" in p.description
     ]
 
     if len(portsList) == 0:
