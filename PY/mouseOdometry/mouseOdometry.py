@@ -54,23 +54,9 @@ def _ODOM_calcLoop():
             # no update
             continue
 
+        # is this true?
         # we only need deltas now, so can overwrite the old
         lastOdomM = nowOdomM
-
-        # redo names to kepp track of things
-        m1x, m1y, m2x, m2y = odomDelta
-
-        # first, find the angular movement
-        alpha1 = (m1x**2 + m1y**2)**.5
-        alpha2 = (m2x**2 + m2y**2)**.5
-
-        # now start the process of finding circumference traveled
-        # find the thetas, notice this is 'backwards' from expected
-
-        #TODO - check the math
-        #TODO - what does 0 y change mean?
-        theta1 = math.atan(m1x / m1y)
-        theta2 = math.atan(m2x / m2y)
 
 
 
