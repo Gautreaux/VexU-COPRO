@@ -36,18 +36,72 @@ def determineValidMice(partial_mice : Optional[List[str]] = None) -> List[str]:
     return probablyMice
 
 # determine the d_value given deltas and known rotation amount
-def determineDFromDeltasRotation(deltas : List[float], known_rotation : float) -> float:
-    lower_bound = 0
-    upper_bound = 1000000
-    _, _, lower_r = determineTranslationFromDelta(deltas, lower_bound)
-    _, _, upper_r = determineTranslationFromDelta(deltas, upper_bound)
-    return 0
+#   this is implemented very lazily so don't call it alot
+#   uses gradient descent to zero in on the proper d value
+#   its O(bad)
+def determineDFromDeltasRotation(deltas : List[float], known_rotation_rad : float) -> float:
+    precision = 0.00001
+    current_in = 5000
+    step_size = current_in / 10
+
+    round_ctr = 0
+    delta = precision*2
+
+    attempted = set()
+
+    while True:
+        # if round_ctr % 10 == 0:
+        #     print(f"Target: {known_rotation_rad}")
+
+        raw = determineTranslationFromDelta(deltas, current_in)[2] 
+        delta = raw - known_rotation_rad
+
+        # print(f"Round {round_ctr}: current_in {current_in}, raw {raw}, delta {delta}, step {step_size}")
+
+        if abs(delta) < precision:
+            break
+
+        round_ctr += 1
+        if known_rotation_rad > 0:
+            if delta < 0:
+                current_in -= step_size
+                if current_in <= 0:
+                    current_in = precision
+            else:
+                current_in += step_size
+        else:
+            if raw > known_rotation_rad:
+                current_in -= step_size
+                if current_in <= 0:
+                    current_in = precision
+            else:
+                current_in += step_size
+
+
+        if (current_in, step_size) in attempted:
+            step_size = step_size / 2
+        attempted.add((current_in, step_size))
+
+        if round_ctr > 200:
+            print("Error incoming:")
+            print(f"Deltas: {deltas}")
+            print(f"Know_rotation: {known_rotation_rad}")
+            raise ValueError(f"Round counter too large: {round_ctr}")
+
+        if step_size < (precision / 100):
+            print("Error incoming:")
+            print(f"Deltas: {deltas}")
+            print(f"Known_rotation: {known_rotation_rad}")
+            raise ValueError(f"Step too small: {step_size}")
+
+    print(f"current_in: {current_in}")
+    return current_in
 
 # given the deltas and the known d_value
 #   return a tuple
 #       x_change (relative to original orientation)
 #       y_change (relative to original orientation)
-#       rotation change (relative to original orientation)
+#       rotation change rad (relative to original orientation)
 def determineTranslationFromDelta(deltas : List[float], d_value : float, is_test : bool = False) -> Union[Dict[str, float], Tuple[float, float, float]]:
     if sum(deltas) == 0:
         if is_test:
@@ -207,8 +261,8 @@ def determineTranslationFromDelta(deltas : List[float], d_value : float, is_test
         if (abs(a_rey_y) > .0001) and  (abs(m1y) > .0001) and ((a_rey_y > 0) != (m1y > 0)):
             isPositiveRotation = False
 
-        print(f"m_vals {m1x} {m1y}")
-        print(f"r1 {r1x} {r1y}")
+        # print(f"m_vals {m1x} {m1y}")
+        # print(f"r1 {r1x} {r1y}")
     else:
         a_ref_x = -r2y
         a_rey_y = r2x
@@ -218,11 +272,11 @@ def determineTranslationFromDelta(deltas : List[float], d_value : float, is_test
         if (abs(a_rey_y) > .0001) and  (abs(m2y) > .0001) and ((a_rey_y > 0) != (m2y > 0)):
             isPositiveRotation = False
 
-        print(f"m_vals {m2x} {m2y}")
-        print(f"r2 {r2x} {r2y}")
+        # print(f"m_vals {m2x} {m2y}")
+        # print(f"r2 {r2x} {r2y}")
 
-    print(f"a ref {a_ref_x} {a_rey_y}")
-    print(f"ispositive rotrad {isPositiveRotation} {rotationRadians}")
+    # print(f"a ref {a_ref_x} {a_rey_y}")
+    # print(f"ispositive rotrad {isPositiveRotation} {rotationRadians}")
     if (isPositiveRotation) != (rotationRadians > 0):
         # sign mismatch
         rotationRadians = -rotationRadians
@@ -430,6 +484,7 @@ def runOdomResolverTest():
     rotationAmounts = [0, 30, 45, 60, 90, 120, 135, 150]
 
     errorCounter = 0
+    d_errorCounter = 0
     skipCounter = 0
     totalCases = 0
 
@@ -482,9 +537,25 @@ def runOdomResolverTest():
                     print("Flagged case, exiting early")
                     exit(0)
 
+            if rotationAmount == 0:
+                # can't use 0 rotation to recover d
+                continue
+            if rotationAmount < 0:
+                # TODO - figure out why this is broken
+                continue
+            if rotationAmount in [45, 90, 135, 180]:
+                # why do these break?
+                #   something about the symmetry?
+                continue
+            d_calc = determineDFromDeltasRotation(offsets, math.radians(rotationAmount))
+            if abs(d_calc - k['d']) > .0001:
+                print(f"  * D error: {k['d']} {d_calc}")
+                d_errorCounter += 1
+
     print("All test cases finished")
     print(f"{totalCases} total cases")
     print(f"{errorCounter} errors")
+    print(f"{d_errorCounter} d_errors")
     print(f"{skipCounter} skipped")
 
     # TODO - add tests for straight translations
