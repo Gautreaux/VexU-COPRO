@@ -35,8 +35,20 @@ def determineValidMice(partial_mice : Optional[List[str]] = None) -> List[str]:
 
     return probablyMice
 
+# determine the d_value given deltas and known rotation amount
+def determineDFromDeltasRotation(deltas : List[float], known_rotation : float) -> float:
+    lower_bound = 0
+    upper_bound = 1000000
+    _, _, lower_r = determineTranslationFromDelta(deltas, lower_bound)
+    _, _, upper_r = determineTranslationFromDelta(deltas, upper_bound)
+    return 0
 
-def determineTranslationFromDelta(deltas : List[float], d_value : float, is_test : bool) -> Union[Dict[str, float], Tuple[float, float, float]]:
+# given the deltas and the known d_value
+#   return a tuple
+#       x_change (relative to original orientation)
+#       y_change (relative to original orientation)
+#       rotation change (relative to original orientation)
+def determineTranslationFromDelta(deltas : List[float], d_value : float, is_test : bool = False) -> Union[Dict[str, float], Tuple[float, float, float]]:
     if sum(deltas) == 0:
         if is_test:
             return {}
@@ -133,20 +145,21 @@ def determineTranslationFromDelta(deltas : List[float], d_value : float, is_test
     # print(f"l-vals: {l1} {l2}")
 
     # find the inner angle on the triangle
-    #   also gives the direction of rotation
-    theta = math.atan2(
-        (-rot_y * (d_value - rot_x)) - (-rot_x * -rot_y),
-        (-rot_x * (d_value - rot_x)) + (-rot_y * -rot_y)
-    )
-    try:
-        theta2 = math.acos(
-            (r1x * r2x + r1y * r2y) /
-            (l1 * l2)
-        )
-        # print(f"theta: {theta2} {theta}")
-        assert(abs(abs(theta2) - abs(theta)) < .0001)
-    except ZeroDivisionError:
-        pass
+    #   not used for anything really
+    if is_test:
+        try:
+            theta = math.atan2(
+                (-rot_y * (d_value - rot_x)) - (-rot_x * -rot_y),
+                (-rot_x * (d_value - rot_x)) + (-rot_y * -rot_y)
+            )
+            theta2 = math.acos(
+                (r1x * r2x + r1y * r2y) /
+                (l1 * l2)
+            )
+            # print(f"theta: {theta2} {theta}")
+            assert(abs(abs(theta2) - abs(theta)) < .0001)
+        except ZeroDivisionError:
+            pass
 
     # find the full rotation circumference
     c1 = 2 * math.pi * l1
@@ -170,8 +183,30 @@ def determineTranslationFromDelta(deltas : List[float], d_value : float, is_test
         else:
             rotationRadians = a1_r / c1 * 2 * math.pi
 
+    # need to determine the rotation direction
+    #   this is given by rotating vector r1 into a1
+    #       and getting a direction
+    #   or much simpler
+    #       since a1 is perp to r1
+    #       find the positive rotation perp of r1
+    #       and see if it matches a1
+    #       if not, negative rotation
 
-    if (theta > 0) != (rotationRadians > 0):
+    isPositiveRotation = True
+
+    a_ref_x = -r1y
+    a_rey_y = r1x
+
+    if (abs(a_ref_x) > .0001) and  (abs(m1x) > .0001) and ((a_ref_x > 0) != (m1x > 0)):
+        isPositiveRotation = False
+    if (abs(a_rey_y) > .0001) and  (abs(m1y) > .0001) and ((a_rey_y > 0) != (m1y > 0)):
+        isPositiveRotation = False
+
+    print(f"m_vals {m1x} {m1y}")
+    print(f"r1 {r1x} {r1y}")
+    print(f"a ref {a_ref_x} {a_rey_y}")
+    print(f"ispositive rotrad {isPositiveRotation} {rotationRadians}")
+    if (isPositiveRotation) != (rotationRadians > 0):
         # sign mismatch
         rotationRadians = -rotationRadians
 
@@ -304,20 +339,20 @@ def doTranslationBackwards(testCase, rotationAmount, m1pos, m2pos) -> List[float
         g1 = t1 - math.radians(90)
         g2 = t2 - math.radians(90)
 
-    print(f"  m1_pos_end: {m1pos_end}")
-    print(f"  m2_pos_end: {m2pos_end}")
-    print(f"  m1_rot: {m1_rot}")
-    print(f"  m2_rot: {m2_rot}")
-    print(f"  l1: {l1}")
-    print(f"  l2: {l2}")
-    print(f"  c1: {c1}")
-    print(f"  c2: {c2}")
-    print(f"  a1: {a1}")
-    print(f"  a2: {a2}")
-    print(f"  t1: {t1}")
-    print(f"  t2: {t2}")
-    print(f"  g1: {g1}")
-    print(f"  g2: {g2}")
+    # print(f"  m1_pos_end: {m1pos_end}")
+    # print(f"  m2_pos_end: {m2pos_end}")
+    # print(f"  m1_rot: {m1_rot}")
+    # print(f"  m2_rot: {m2_rot}")
+    # print(f"  l1: {l1}")
+    # print(f"  l2: {l2}")
+    # print(f"  c1: {c1}")
+    # print(f"  c2: {c2}")
+    # print(f"  a1: {a1}")
+    # print(f"  a2: {a2}")
+    # print(f"  t1: {t1}")
+    # print(f"  t2: {t2}")
+    # print(f"  g1: {g1}")
+    # print(f"  g2: {g2}")
 
     ########
     # finding the displacements to pass in
@@ -325,6 +360,16 @@ def doTranslationBackwards(testCase, rotationAmount, m1pos, m2pos) -> List[float
     m1y = math.sin(g1) * a1
     m2x = math.cos(g2) * a2
     m2y = math.sin(g2) * a2
+
+    ########
+    # adjusting for rotation direction
+    if rotationRadians < 0:
+        m1x = -m1x
+        m1y = -m1y
+        m2x = -m2x
+        m2y = -m2y
+        a1 = -a1
+        a2 = -a2
 
     ########
     ########
@@ -365,7 +410,7 @@ def runOdomResolverTest():
     m2StartPos = (2,0)
     # testCases = [(-1, 0), (-1, 2), (0, 2), (1, 2), (2, 2), (3, 2), (3, 0), (3, -1), (2,-1), (1, -1), (0, -1), (0, 0)]
     testCases = list(itertools.product(range(-1, 4), range(-1,1)))
-    rotationAmounts = [0, 30, 45, 60, 90, 120, 135, 150, 180]
+    rotationAmounts = [0, 30, 45, 60, 90, 120, 135, 150]
 
     errorCounter = 0
     skipCounter = 0
@@ -375,22 +420,22 @@ def runOdomResolverTest():
         for rotationAmount in itertools.chain(rotationAmounts, map(lambda x : -x, rotationAmounts), [180]):
             totalCases += 1
 
-            # if testCase == m1StartPos or testCase == m2StartPos:
-            #     # for now, skipping cases of rotation directly about a mouse
-            #     skipCounter += 1
-            #     continue
+            if testCase == m1StartPos or testCase == m2StartPos:
+                # for now, skipping cases of rotation directly about a mouse
+                skipCounter += 1
+                continue
 
-            # if testCase[1] == 0:
-            #     # skipping cases where the rotation is through the mice
-            #     skipCounter += 1
-            #     continue
+            if testCase[1] == 0:
+                # skipping cases where the rotation is through the mice
+                skipCounter += 1
+                continue
 
             print(f"Starting: {testCase} {rotationAmount}")
 
             k = doTranslationBackwards(testCase, rotationAmount, m1StartPos, m2StartPos)
 
             offsets = [k["m1x"], k["m1y"], k["m2x"], k["m2y"]]
-            print(f"Resolved the offsets: {offsets}")
+            # print(f"Resolved the offsets: {offsets}")
 
             kk = determineTranslationFromDelta(offsets, k["d"], True)
 
@@ -404,9 +449,13 @@ def runOdomResolverTest():
             if hasError:
                 print("Error found:")
                 print(f"Test case: {testCase} {rotationAmount}")
+                errorCounter += 1
 
                 for key in kk:
-                    print(f"  {key}: {k[key]} {kk[key]}")
+                    v = k[key]
+                    vv = kk[key]
+                    t = abs(v - vv) < .0001
+                    print(f"  {' ' if t else '*'} {key}: {v} {vv}")
 
                 if(testCase == (1, -1)) and (rotationAmount == 90):
                     print("Flagged case, exiting early")
