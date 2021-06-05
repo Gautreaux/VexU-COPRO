@@ -3,7 +3,9 @@ if __name__ != "__main__":
 import itertools
 import math
 import os
+import re
 import select
+import subprocess
 from typing import Dict, List, Optional, Tuple, Union
 
 
@@ -34,6 +36,40 @@ def determineValidMice(partial_mice : Optional[List[str]] = None) -> List[str]:
     VEX_stop()
 
     return probablyMice
+
+# given a list of USB address,
+#   return the /dev/input/mouse# file associated with it:
+#   input should be string usb address <bus>.<addr>[.<sub_addr>]
+#       i.e. 1.2 or 1.2.1.2
+def determineMiceByPath(usb_paths : List[str]) -> List[Optional[str]]:
+    cwd = os.getcwd()
+    try:
+        os.chdir("/dev/input/by-path")
+        sub = subprocess.run(['ls', '-l'], stdout=subprocess.PIPE)
+    finally:
+        os.chdir(cwd)
+    
+    # regex for extracting mouse devices
+    #   first capture will be the usb address a la "1.1"
+    #   second capture will be file path a la "/mouse0"
+    mouseEventsRegex = "[a-zA-Z0-9 :-]+\.usb-usb-0:([0-9\.]+):[0-9\-\.a-z \>]+(\/mouse[0-9]+)"
+
+    lines = list(sub.stdout.decode().split('\n'))
+
+    mapping = {}
+
+    for line in lines:
+        m = re.match(mouseEventsRegex, line)
+        if m is not None:
+            mapping[m[1]] = m[2]
+
+    matches = []
+    for usb_addr in usb_paths:
+        if usb_addr in mapping:
+            matches.append(mapping[usb_addr])
+        else:
+            matches.append(None)
+    return matches
 
 # determine the d_value given deltas and known rotation amount
 #   this is implemented very lazily so don't call it alot

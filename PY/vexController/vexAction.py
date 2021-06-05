@@ -10,6 +10,8 @@ COMMAND_ENUM = {
     "jitter" : 10,
     "startRotationLeft" : 11,
     "startRotationRight" : 12,
+    "readIMU" : 32,
+    "resetIMU" : 33,
 }
 
 class IllegalCommand(Exception):
@@ -20,10 +22,10 @@ def buildSendCommand(key : str, param : Optional[bytes] = None):
         raise IllegalCommand(key)
 
     if param is not None:
-        msg = bytes(itertools.chain([COMMAND_ENUM[k]], param))
+        msg = bytes(itertools.chain([COMMAND_ENUM[key]], param))
     else:
         # need to pack into a list so that the result is 1 byte with value
-        msg = bytes([COMMAND_ENUM[k]])
+        msg = bytes([COMMAND_ENUM[key]])
     v_messenger.sendMessage(msg=msg)
 
 # stop all robot motion
@@ -44,3 +46,11 @@ def VEX_startRotation(rotate_left : True) -> None:
         buildSendCommand("startRotationLeft")
     else:
         buildSendCommand("startRotationRight")
+
+def VEX_resetIMU() -> None:
+    buildSendCommand("resetIMU")
+
+def VEX_readIMU() -> float:
+    buildSendCommand("readIMU")
+    m = v_messenger.readDataMessageBlocking()
+    return float(m)
