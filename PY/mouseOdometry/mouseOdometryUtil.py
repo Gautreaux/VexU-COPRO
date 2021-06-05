@@ -95,8 +95,8 @@ def determineTranslationFromDelta(deltas : List[float], d_value : float, is_test
         # -or-
         #   the rotation point is in line with both mice
 
-        if abs(a1_r - a2_r) < .0001:
-            # the magnitude is effectively the same,
+        if (abs(m1x - m2x) < .0001) and (abs(m1y - m2y) < .0001):
+            # the magnitude and direction is effectively the same,
             #   so no rotation occurred, just translation
             if is_test:
                 return {
@@ -120,6 +120,10 @@ def determineTranslationFromDelta(deltas : List[float], d_value : float, is_test
             # rotating directly on m2
             rot_x = d_value
             rot_y = 0
+        elif abs(a1_r - a2_r) < .0001:
+            # rotating directly between the mice
+            rot_x = d_value / 2
+            rot_y = 0 
         else:
             # rotation about some other point
             #  but still in line with the mice
@@ -194,16 +198,29 @@ def determineTranslationFromDelta(deltas : List[float], d_value : float, is_test
 
     isPositiveRotation = True
 
-    a_ref_x = -r1y
-    a_rey_y = r1x
+    if r1x != 0 or r1y != 0:
+        a_ref_x = -r1y
+        a_rey_y = r1x
 
-    if (abs(a_ref_x) > .0001) and  (abs(m1x) > .0001) and ((a_ref_x > 0) != (m1x > 0)):
-        isPositiveRotation = False
-    if (abs(a_rey_y) > .0001) and  (abs(m1y) > .0001) and ((a_rey_y > 0) != (m1y > 0)):
-        isPositiveRotation = False
+        if (abs(a_ref_x) > .0001) and  (abs(m1x) > .0001) and ((a_ref_x > 0) != (m1x > 0)):
+            isPositiveRotation = False
+        if (abs(a_rey_y) > .0001) and  (abs(m1y) > .0001) and ((a_rey_y > 0) != (m1y > 0)):
+            isPositiveRotation = False
 
-    print(f"m_vals {m1x} {m1y}")
-    print(f"r1 {r1x} {r1y}")
+        print(f"m_vals {m1x} {m1y}")
+        print(f"r1 {r1x} {r1y}")
+    else:
+        a_ref_x = -r2y
+        a_rey_y = r2x
+
+        if (abs(a_ref_x) > .0001) and  (abs(m2x) > .0001) and ((a_ref_x > 0) != (m2x > 0)):
+            isPositiveRotation = False
+        if (abs(a_rey_y) > .0001) and  (abs(m2y) > .0001) and ((a_rey_y > 0) != (m2y > 0)):
+            isPositiveRotation = False
+
+        print(f"m_vals {m2x} {m2y}")
+        print(f"r2 {r2x} {r2y}")
+
     print(f"a ref {a_ref_x} {a_rey_y}")
     print(f"ispositive rotrad {isPositiveRotation} {rotationRadians}")
     if (isPositiveRotation) != (rotationRadians > 0):
@@ -420,15 +437,15 @@ def runOdomResolverTest():
         for rotationAmount in itertools.chain(rotationAmounts, map(lambda x : -x, rotationAmounts), [180]):
             totalCases += 1
 
-            if testCase == m1StartPos or testCase == m2StartPos:
-                # for now, skipping cases of rotation directly about a mouse
-                skipCounter += 1
-                continue
+            # if testCase == m1StartPos or testCase == m2StartPos:
+            #     # for now, skipping cases of rotation directly about a mouse
+            #     skipCounter += 1
+            #     continue
 
-            if testCase[1] == 0:
-                # skipping cases where the rotation is through the mice
-                skipCounter += 1
-                continue
+            # if testCase[1] == 0:
+            #     # skipping cases where the rotation is through the mice
+            #     skipCounter += 1
+            #     continue
 
             print(f"Starting: {testCase} {rotationAmount}")
 
