@@ -20,8 +20,14 @@ void processMessage(uint8_t const  * const buffer, const uint8_t len){
     case COMMAND_ENUM::START_ROTATION_RIGHT:
         startRotation(buffer, len, false);
         return;
+    case COMMAND_ENUM::READ_IMU:
+        readIMU(buffer, len);
+        return;
+    case COMMAND_ENUM::RESET_IMU:
+        resetIMU(buffer, len);
+        return;
     default:
-        pros::lcd::print(7, "Illegal Command: %X", buffer[0]);
+        pros::lcd::print(7, "Illegal Command: 0x%X", buffer[0]);
         return;
     }
 }
@@ -49,4 +55,16 @@ void startRotation(uint8_t const  * const buffer, const uint8_t len, const bool 
         updateMotorGroup(leftDrive, ROTATION_INTENSITY);
         updateMotorGroup(rightDrive, -ROTATION_INTENSITY);
     }
+}
+
+void readIMU(uint8_t const  * const buffer, const uint8_t len){
+    char c[32];
+    // TODO - if rotation gets large, will overflow c buffer and this 
+    //  will return a negative number
+    uint8_t sz = snprintf(c, 32, "%.4f", -IMU.get_rotation());
+    VexMessenger::v_messenger->sendMessage((uint8_t * const)c, sz);
+}
+
+void resetIMU(uint8_t const  * const buffer, const uint8_t len){
+    IMU.reset();
 }
