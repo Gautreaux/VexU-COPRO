@@ -66,7 +66,7 @@ def determineMiceByPath(usb_paths : List[str]) -> List[Optional[str]]:
     matches = []
     for usb_addr in usb_paths:
         if usb_addr in mapping:
-            matches.append(mapping[usb_addr])
+            matches.append("/dev/input" + mapping[usb_addr])
         else:
             matches.append(None)
     return matches
@@ -268,8 +268,8 @@ def determineTranslationFromDelta(deltas : List[float], d_value : float, is_test
         # print(f"rot_amt: {rotation_amt_1} {rotation_amt_2}")
         # print(f"a_vals: {a1_r} {a2_r}")
 
-        assert(abs(rotation_amt_1 - rotation_amt_2) < .0001)
-        rotationRadians = rotation_amt_1 * 2 * math.pi
+        # assert(abs(rotation_amt_1 - rotation_amt_2) < .0001)
+        rotationRadians = (rotation_amt_1 + rotation_amt_2) * math.pi
     except ZeroDivisionError:
         # can't both be zero, that would be caught earlier
         if c1 == 0:

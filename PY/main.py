@@ -1,6 +1,7 @@
 # from .vexSerial import v_ser
 # from .vexSerial.vexSerialTest import wordTest, bytesTest
-from PY.mouseOdometry.mouseOdometryUtil import determineMiceByPath
+from PY.mouseOdometry.mouseOdometry import getCurrentDeltas, launchReadLoop, resolveDValue, shutdownOdom
+from PY.mouseOdometry.mouseOdometryUtil import determineDFromDeltasRotation, determineMiceByPath, determineTranslationFromDelta
 from .vexMessenger import v_messenger
 # from .vexMessenger.vexMessengerTest import bytesTest
 # from .CV import cv_main
@@ -8,23 +9,14 @@ from .vexMessenger import v_messenger
 # from .mouseOdometry.mouseOdometry import calibrateOdom, getCurrentOdomPosition, launchOdom
 from .vexController import vexAction
 
-
+import os
+import select
 import time
+import threading
+from typing import Final
 
 def main():
-
-    print(determineMiceByPath(["1.2", "1.3"]))
-    exit(0)
-
-    v_messenger.connect()
-    # v_messenger.sendMessage(b"\x0B")
-    # vexAction.VEX_resetIMU() # takes too long and is non-blocking in pros
-    vexAction.VEX_startRotation(True)
-    time.sleep(3)
-    # v_messenger.sendMessage(b"\x00")
-    vexAction.VEX_stop()
-    print(f"IMU value: {vexAction.VEX_readIMU()}")
-    v_messenger.disconnect()
+    resolveDValue()
     exit(0)
     
     print("Test mouse odometry")
