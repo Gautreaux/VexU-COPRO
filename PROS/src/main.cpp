@@ -97,10 +97,17 @@ void opcontrol() {
 	//	forces a realease before toggling again
 	bool lastPress = false;
 
+	master.print(0, 0, "%s", "CTRL DISABLED");
+
 	pros::lcd::print(1, "VEX_Messenger ---");
 
 	while (true) {
-		pros::lcd::print(0,"Hello");
+#ifdef LOW_POWER_MODE
+		pros::lcd::print(0, "LOW POWER MODE");
+		master.print(1, 0, "%s", "LOW POWER MODE");
+#else
+		pros::lcd::print(0,"Normal Operation");
+#endif
 		// if(VexSerial::v_ser->receiveMessageIfAvailable(recvBuffer, msgLen))
 		// {
 		// 	pros::lcd::print(
@@ -142,6 +149,7 @@ void opcontrol() {
 		if(master.is_connected()){
 			if(!lastPress && master.get_digital(pros::E_CONTROLLER_DIGITAL_X)){
 				controllerOn = !controllerOn;
+				master.print(0, 0, "%s", (controllerOn ? "CTRL ENABLED " : "CTRL DISABLED"));
 				lastPress = true;
 			}else if(lastPress && !master.get_digital(pros::E_CONTROLLER_DIGITAL_X)){
 				lastPress = false;

@@ -19,32 +19,32 @@ def main():
     resolveDValue()
     exit(0)
     
-    print("Test mouse odometry")
+    # print("Test mouse odometry")
 
-    l = listMice()
-    print("All mice: ", end="")
-    print(l)
-    p = determineValidMice()
-    print("Relevant Mice: ", end="")
-    print(p)
+    # l = listMice()
+    # print("All mice: ", end="")
+    # print(l)
+    # p = determineValidMice()
+    # print("Relevant Mice: ", end="")
+    # print(p)
 
-    print("Overriding mice for testing:")
-    p = ["/dev/input/mouse2", "/dev/input/mouse0"]
+    # print("Overriding mice for testing:")
+    # p = ["/dev/input/mouse2", "/dev/input/mouse0"]
 
-    if len(p) == 0:
-        print("No relevant mic could be found")
-        return
-    elif len(p) == 1:
-        print("Only one relevant mice could be found")
-        return
-    elif len(p) != 2:
-        print(f"Expected two relevant mice, found {len(p)} instead")
-        return
+    # if len(p) == 0:
+    #     print("No relevant mic could be found")
+    #     return
+    # elif len(p) == 1:
+    #     print("Only one relevant mice could be found")
+    #     return
+    # elif len(p) != 2:
+    #     print(f"Expected two relevant mice, found {len(p)} instead")
+    #     return
 
-    launchOdom(*p)
-    calibrateOdom()
+    # launchOdom(*p)
+    # calibrateOdom()
 
-    time.sleep(500)
+    # time.sleep(500)
 
     # while(True):
     #     print(getCurrentOdomPosition())

@@ -3,6 +3,7 @@
 
 #include "main.h"
 #include "vexSerial.h"
+#include "util.h"
 
 class VexMessenger
 {

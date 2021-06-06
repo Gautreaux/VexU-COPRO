@@ -71,9 +71,11 @@ void VexMessenger::handle_control(VexMessenger::Message * const msg){
             msg->header.msgType = static_cast<uint8_t>(VexMessenger::MessageTypes::MESSAGE_TYPE_GOODBYE_ACK);
             send_message(msg);
             is_connected = false;
+            stopAll();
             break;
         case VexMessenger::MessageTypes::MESSAGE_TYPE_GOODBYE_ACK:
             is_connected = false;
+            stopAll();
             break;
         case VexMessenger::MessageTypes::MESSAGE_TYPE_ECHO:
             msg->header.msgType = static_cast<uint8_t>(VexMessenger::MessageTypes::MESSAGE_TYPE_ECHO_ACK);
