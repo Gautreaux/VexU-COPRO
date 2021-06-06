@@ -33,10 +33,7 @@ void processMessage(uint8_t const  * const buffer, const uint8_t len){
 }
 
 void stop(uint8_t const  * const buffer, const uint8_t len){
-    updateMotorGroup(leftDrive, 0);
-    updateMotorGroup(rightDrive, 0);
-    updateMotorGroup(intake, 0);
-    updateMotorGroup(rollers, 0);
+    stopAll();
 }
 
 void text(uint8_t const  * const buffer, const uint8_t len){

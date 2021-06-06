@@ -20,7 +20,11 @@ extern pros::Imu IMU;
 // how fast should start/stop rotation run
 //  something in range 0-127
 //      but you know, dont do 0, it wont do anything
+#ifndef LOW_POWER_MODE
 #define ROTATION_INTENSITY 30
+#else
+#define ROTATION_INTENSITY 127
+#endif
 
 // process a single message instance
 void processMessage(uint8_t const  * const buffer, const uint8_t len);

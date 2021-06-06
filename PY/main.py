@@ -1,41 +1,47 @@
 # from .vexSerial import v_ser
 # from .vexSerial.vexSerialTest import wordTest, bytesTest
-# from .vexMessenger import v_messenger
+from .vexMessenger import v_messenger
 # from .vexMessenger.vexMessengerTest import bytesTest
 # from .CV import cv_main
-from PY.mouseOdometry.mouseOdometryUtil import determineValidMice, listMice
-from .mouseOdometry.mouseOdometry import calibrateOdom, getCurrentOdomPosition, launchOdom
+# from PY.mouseOdometry.mouseOdometryUtil import determineValidMice, listMice
+# from .mouseOdometry.mouseOdometry import calibrateOdom, getCurrentOdomPosition, launchOdom
 
 import time
 
 def main():
+
+    v_messenger.connect()
+
+    v_messenger.sendMessage(bytes('\x01' + str(round(time.time(), 4)), encoding="ascii"))
+
+    v_messenger.disconnect()
     
-    print("Test mouse odometry")
+    # print("Test mouse odometry")
 
-    l = listMice()
-    print("All mice: ", end="")
-    print(l)
-    p = determineValidMice()
-    print("Relevant Mice: ", end="")
-    print(p)
+    # l = listMice()
+    # print("All mice: ", end="")
+    # print(l)
+    # p = determineValidMice()
+    # print("Relevant Mice: ", end="")
+    # print(p)
 
-    print("Overriding mice for testing:")
-    p = ["/dev/input/mouse2", "/dev/input/mouse0"]
+    # print("Overriding mice for testing:")
+    # p = ["/dev/input/mouse2", "/dev/input/mouse0"]
 
-    if len(p) == 0:
-        print("No relevant mic could be found")
-        return
-    elif len(p) == 1:
-        print("Only one relevant mice could be found")
-        return
-    elif len(p) != 2:
-        print(f"Expected two relevant mice, found {len(p)} instead")
-        return
+    # if len(p) == 0:
+    #     print("No relevant mic could be found")
+    #     return
+    # elif len(p) == 1:
+    #     print("Only one relevant mice could be found")
+    #     return
+    # elif len(p) != 2:
+    #     print(f"Expected two relevant mice, found {len(p)} instead")
+    #     return
 
-    launchOdom(*p)
-    calibrateOdom()
+    # launchOdom(*p)
+    # calibrateOdom()
 
-    time.sleep(500)
+    # time.sleep(500)
 
     # while(True):
     #     print(getCurrentOdomPosition())
