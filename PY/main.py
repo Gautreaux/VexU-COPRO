@@ -1,20 +1,31 @@
 # from .vexSerial import v_ser
 # from .vexSerial.vexSerialTest import wordTest, bytesTest
+from PY.mouseOdometry.mouseOdometryUtil import determineMiceByPath
 from .vexMessenger import v_messenger
 # from .vexMessenger.vexMessengerTest import bytesTest
 # from .CV import cv_main
 # from PY.mouseOdometry.mouseOdometryUtil import determineValidMice, listMice
 # from .mouseOdometry.mouseOdometry import calibrateOdom, getCurrentOdomPosition, launchOdom
+from .vexController import vexAction
+
 
 import time
 
 def main():
 
+    print(determineMiceByPath(["1.2", "1.3"]))
+    exit(0)
+
     v_messenger.connect()
-
-    v_messenger.sendMessage(bytes('\x01' + str(round(time.time(), 4)), encoding="ascii"))
-
+    # v_messenger.sendMessage(b"\x0B")
+    # vexAction.VEX_resetIMU() # takes too long and is non-blocking in pros
+    vexAction.VEX_startRotation(True)
+    time.sleep(3)
+    # v_messenger.sendMessage(b"\x00")
+    vexAction.VEX_stop()
+    print(f"IMU value: {vexAction.VEX_readIMU()}")
     v_messenger.disconnect()
+    exit(0)
     
     # print("Test mouse odometry")
 
