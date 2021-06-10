@@ -83,67 +83,67 @@ void opcontrol() {
 
 	pros::lcd::print(1, "VEX_Messenger ---");
 
-	while (true) {
-		pros::lcd::print(0,"Hello");
-		// if(VexSerial::v_ser->receiveMessageIfAvailable(recvBuffer, msgLen))
-		// {
-		// 	pros::lcd::print(
-		// 		nextLine, "(%03d) %02X %02X %02X %02X  %02X %02X %02X %02X",
-		// 		msgLen, 
-		// 		recvBuffer[0], recvBuffer[1],
-		// 		recvBuffer[2], recvBuffer[3],
-		// 		recvBuffer[4], recvBuffer[5],
-		// 		recvBuffer[6], recvBuffer[7]
-		// 	);
+	// while (true) {
+	// 	pros::lcd::print(0,"Hello");
+	// 	// if(VexSerial::v_ser->receiveMessageIfAvailable(recvBuffer, msgLen))
+	// 	// {
+	// 	// 	pros::lcd::print(
+	// 	// 		nextLine, "(%03d) %02X %02X %02X %02X  %02X %02X %02X %02X",
+	// 	// 		msgLen, 
+	// 	// 		recvBuffer[0], recvBuffer[1],
+	// 	// 		recvBuffer[2], recvBuffer[3],
+	// 	// 		recvBuffer[4], recvBuffer[5],
+	// 	// 		recvBuffer[6], recvBuffer[7]
+	// 	// 	);
 
-		// 	nextLine = (nextLine + 1); // fast mod8
-		// 	if(nextLine >= 8){
-		// 		nextLine = 4;
-		// 	}
+	// 	// 	nextLine = (nextLine + 1); // fast mod8
+	// 	// 	if(nextLine >= 8){
+	// 	// 		nextLine = 4;
+	// 	// 	}
 
-		// 	VexSerial::v_ser->sendMessage(recvBuffer, msgLen);
-		// }else{
-		// 	pros::lcd::print(0, "VSER_false");
-		// }
+	// 	// 	VexSerial::v_ser->sendMessage(recvBuffer, msgLen);
+	// 	// }else{
+	// 	// 	pros::lcd::print(0, "VSER_false");
+	// 	// }
 
-		// pros::delay(20);
+	// 	// pros::delay(20);
 
-		if(VexMessenger::v_messenger->isConnected()){
-			pros::lcd::print(1, "VEX_Messenger Connected!");
+	// 	if(VexMessenger::v_messenger->isConnected()){
+	// 		pros::lcd::print(1, "VEX_Messenger Connected!");
 
-			if(VexMessenger::v_messenger->readDataMessage(recvBuffer, msgLen, 50)){
-				recvBuffer[msgLen] = 0; //add null terminator
-				pros::lcd::print(6, "%s", recvBuffer);
-			}
-		}
-		else{
-			pros::lcd::print(1, "VEX_Messenger %s",
-				((VexMessenger::v_messenger->try_connect(200)) ? ("Connection Success!") : ("Connection Failed."))
-			);
-		}
+	// 		if(VexMessenger::v_messenger->readDataMessage(recvBuffer, msgLen, 50)){
+	// 			recvBuffer[msgLen] = 0; //add null terminator
+	// 			pros::lcd::print(6, "%s", recvBuffer);
+	// 		}
+	// 	}
+	// 	else{
+	// 		pros::lcd::print(1, "VEX_Messenger %s",
+	// 			((VexMessenger::v_messenger->try_connect(200)) ? ("Connection Success!") : ("Connection Failed."))
+	// 		);
+	// 	}
 
-		if(master.is_connected()){
-			pros::lcd::print(4, "Controller Connected");
+	// 	if(master.is_connected()){
+	// 		pros::lcd::print(4, "Controller Connected");
 
-			int32_t leftY = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
-			int32_t rightY = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y);
-			updateDrive(leftY, rightY);
+	// 		int32_t leftY = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
+	// 		int32_t rightY = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y);
+	// 		updateDrive(leftY, rightY);
 
-			if(master.get_digital(pros::E_CONTROLLER_DIGITAL_R2)){
-				updateMotorGroup(intake, 127);
-			}else if(master.get_digital(pros::E_CONTROLLER_DIGITAL_R1)){
-				updateMotorGroup(intake, -127);
-			}else{
-				updateMotorGroup(intake, 0);
-			}
+	// 		if(master.get_digital(pros::E_CONTROLLER_DIGITAL_R2)){
+	// 			updateMotorGroup(intake, 127);
+	// 		}else if(master.get_digital(pros::E_CONTROLLER_DIGITAL_R1)){
+	// 			updateMotorGroup(intake, -127);
+	// 		}else{
+	// 			updateMotorGroup(intake, 0);
+	// 		}
 
-			if(master.get_digital(pros::E_CONTROLLER_DIGITAL_L2)){
-				updateMotorGroup(rollers, 127);
-			}else if(master.get_digital(pros::E_CONTROLLER_DIGITAL_L1)){
-				updateMotorGroup(rollers, -127);
-			}else{
-				updateMotorGroup(rollers, 0);
-			}
-		}
-	}
+	// 		if(master.get_digital(pros::E_CONTROLLER_DIGITAL_L2)){
+	// 			updateMotorGroup(rollers, 127);
+	// 		}else if(master.get_digital(pros::E_CONTROLLER_DIGITAL_L1)){
+	// 			updateMotorGroup(rollers, -127);
+	// 		}else{
+	// 			updateMotorGroup(rollers, 0);
+	// 		}
+	// 	}
+	// }
 }

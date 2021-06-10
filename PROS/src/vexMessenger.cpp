@@ -26,8 +26,8 @@ recvTask(MessengerReceiver, nullptr, "recvTask")
     pros::c::serctl(SERCTL_DISABLE_COBS, NULL);
 
     for(unsigned int i = 0; i < MAX_MESSAGES_IN_FLIGHT; i++){
-        VexSerial::Message* thisMsg = messagePool + i;
-        pros::c::queue_append(vsq.AvailablePool, &thisMsg, TIMEOUT_MAX);
+        VexMessenger::Message* thisMsg = messagePool + i;
+        pros::c::queue_append(AvailablePool, &thisMsg, TIMEOUT_MAX);
     }    
 }
 
@@ -38,7 +38,8 @@ VexMessenger::~VexMessenger(void)
     //     try_disconnect(200);
     // }
 
-    pros::c::queue_delete(q);
+    pros::c::queue_delete(AvailablePool);
+    pros::c::queue_delete(ReceivePool);
 }
 #endif
 
@@ -56,7 +57,7 @@ void VexMessenger::MessengerReceiver(void* params){
 #else
             VexMessenger::Message* thisMsg;
 
-            if(pros::c::queue_recv(AvailablePool, &thisMessage, TIMEOUT_MAX)){
+            if(pros::c::queue_recv(AvailablePool, &thisMsg, TIMEOUT_MAX)){
                 memcpy(thisMsg, &response, sizeof(VexMessenger::Message));
                 pros::c::queue_append(ReceivePool, &thisMsg, TIMEOUT_MAX);
             }
@@ -175,7 +176,8 @@ bool VexMessenger::tryConnect(uint32_t const timeout_ms){
 // }
 #ifdef NOT_PROS
 #else
-pros::c::queue_t const VexMessenger::AvailablePool(pros::c::queue_create(MAX_MESSAGES_IN_FLIGHT, sizeof(VexMessenger::Message*))),
-pros::c::queue_t const VexMessenger::ReceivePool(pros::c::queue_create(MAX_MESSAGES_IN_FLIGHT, sizeof(VexMessenger::Message*))),
+pros::c::queue_t const VexMessenger::AvailablePool(pros::c::queue_create(MAX_MESSAGES_IN_FLIGHT, sizeof(VexMessenger::Message*)));
+pros::c::queue_t const VexMessenger::ReceivePool(pros::c::queue_create(MAX_MESSAGES_IN_FLIGHT, sizeof(VexMessenger::Message*)));
+VexMessenger::Message VexMessenger::messagePool[MAX_MESSAGES_IN_FLIGHT];
 #endif
 VexMessenger * const VexMessenger::v_messenger = new VexMessenger();
