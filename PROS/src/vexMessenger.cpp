@@ -21,10 +21,14 @@ VexMessenger::~VexMessenger(void)
 }
 #else
 VexMessenger::VexMessenger(void) : 
-q(pros::c::queue_create(MAX_MESSAGES_IN_FLIGHT, sizeof(VexMessenger::Message))),
 recvTask(MessengerReceiver, nullptr, "recvTask")
 {
-    // TODO - launch async reciever,
+    pros::c::serctl(SERCTL_DISABLE_COBS, NULL);
+
+    for(unsigned int i = 0; i < MAX_MESSAGES_IN_FLIGHT; i++){
+        VexSerial::Message* thisMsg = messagePool + i;
+        pros::c::queue_append(vsq.AvailablePool, &thisMsg, TIMEOUT_MAX);
+    }    
 }
 
 VexMessenger::~VexMessenger(void)
@@ -47,12 +51,16 @@ void VexMessenger::MessengerReceiver(void* params){
         VexSerial::receiveMessage((uint8_t*)(&response), messageSize);
 
         if(response.header.msgType == VexMessenger::MessageTypes::MESSAGE_TYPE_DATA){
-            // TODO - queue
-// #ifdef NOT_PROS
-//             //TODO - q.append
-// #else
-//             pros::c::queue_append(q, )
-// #endif
+#ifdef NOT_PROS
+            //TODO - q.append
+#else
+            VexMessenger::Message* thisMsg;
+
+            if(pros::c::queue_recv(AvailablePool, &thisMessage, TIMEOUT_MAX)){
+                memcpy(thisMsg, &response, sizeof(VexMessenger::Message));
+                pros::c::queue_append(ReceivePool, &thisMsg, TIMEOUT_MAX);
+            }
+#endif
         }else{
             handle_control(&response);
         }
@@ -96,80 +104,34 @@ void VexMessenger::handle_control(VexMessenger::Message * const msg){
     }
 }
 
-// bool VexMessenger::try_cycle(uint32_t const timeout_ms, bool const isConnect){
-//     uint8_t const out = static_cast<uint8_t>((isConnect) ? ((VexMessenger::MessageTypes::MESSAGE_TYPE_HELLO)) : (VexMessenger::MessageTypes::MESSAGE_TYPE_GOODBYE));
-//     uint8_t const in = static_cast<uint8_t>((isConnect) ? ((VexMessenger::MessageTypes::MESSAGE_TYPE_HELLO_ACK)) : (VexMessenger::MessageTypes::MESSAGE_TYPE_GOODBYE_ACK));
+bool VexMessenger::tryConnect(uint32_t const timeout_ms){
+    if(isConnected()){
+        return true;
+    }
 
-//     VexMessenger::Message out_message;
-//     out_message.header.len = sizeof(VexMessenger::MessageHeader);
-//     out_message.header.msgType = out;
+    const uint32_t retryTime = std::min(RETRY_FREQUENCY_MS, (int)timeout_ms);
+    uint32_t elapsed = 0;
 
-//     VexMessenger::Message response_message;
+    do{
+        VexMessenger::Message msg;
+        msg.header.len = 4;
+        msg.header.msgType = VexMessenger::MessageTypes::MESSAGE_TYPE_HELLO;
+        send_message(&msg);
 
-//     uint32_t timeRemaining = timeout_ms;
-//     uint32_t const startTime = pros::millis();
+#ifdef NOT_PROS
+        std::this_thread::sleep_for(std::chrono::milliseconds(retryTime));
+#else
+        pros::delay(retryTime);
+#endif
+        if(isConnected()){
+            return true;
+        }
 
-//     while(isConnected() != isConnect){
-//         send_message(&out_message); // potentially a little spammy
-//         if(receive_message(&response_message, timeRemaining)){
-//             if(response_message.header.msgType == in){
-//                 is_connected = isConnect;
-//                 return true;
-//             }
-//             else if(response_message.header.msgType == out){
-//                 // the client hello'ed us, we must respond
-//                 out_message.header.len = sizeof(VexMessenger::MessageHeader);
-//                 out_message.header.msgType = in;
-//                 send_message(&out_message);
-//                 is_connected = isConnect;
-//                 return true;
-//             }else{
-//                 // received a message before the response
-//                 // probably just noise in the buffer
-//                 //  just discard it
-//                 timeRemaining = timeout_ms - (pros::millis() - startTime);
-//                 if(timeRemaining > timeout_ms){
-//                     //under flow occurred
-//                     return false;
-//                 }
-//             }
-//         }else{
-//             //timeout
-//             return false;
-//         }
-//     }
-//     return true;
-// }
+        elapsed += retryTime;
+    }while(elapsed < timeout_ms);
 
-// void VexMessenger::handle_control(VexMessenger::Message * const msg){
-//     switch (msg->header.msgType){
-//         case VexMessenger::MessageTypes::MESSAGE_TYPE_HELLO:
-//             msg->header.msgType = static_cast<uint8_t>(VexMessenger::MessageTypes::MESSAGE_TYPE_HELLO_ACK);
-//             send_message(msg);
-//             is_connected = true;
-//             break;
-//         case VexMessenger::MessageTypes::MESSAGE_TYPE_HELLO_ACK:
-//             is_connected = true;
-//             break;
-//         case VexMessenger::MessageTypes::MESSAGE_TYPE_GOODBYE:
-//             msg->header.msgType = static_cast<uint8_t>(VexMessenger::MessageTypes::MESSAGE_TYPE_GOODBYE_ACK);
-//             send_message(msg);
-//             break;
-//         case VexMessenger::MessageTypes::MESSAGE_TYPE_GOODBYE_ACK:
-//             is_connected = false;
-//             break;
-//         case VexMessenger::MessageTypes::MESSAGE_TYPE_ECHO:
-//             msg->header.msgType = static_cast<uint8_t>(VexMessenger::MessageTypes::MESSAGE_TYPE_ECHO_ACK);
-//             send_message(msg);
-//             break;
-//         case VexMessenger::MessageTypes::MESSAGE_TYPE_ECHO_ACK:
-//             //TODO - probably want to do something here w.r.t processing but whatever
-//             break;
-//         default:
-//             pros::lcd::print(6, "handle_control illegal control: %d", msg->header.msgType);
-//             throw msg->header.msgType;
-//     }
-// }
+    return false;
+}
 
 // bool VexMessenger::readDataMessage(uint8_t * const buff, uint8_t& len, uint32_t const timeout_ms){
 //     VexMessenger::Message response;
@@ -211,5 +173,9 @@ void VexMessenger::handle_control(VexMessenger::Message * const msg){
 
 //     throw UnexpectedDisconnection();
 // }
-
-// VexMessenger * const VexMessenger::v_messenger = new VexMessenger();
+#ifdef NOT_PROS
+#else
+pros::c::queue_t const VexMessenger::AvailablePool(pros::c::queue_create(MAX_MESSAGES_IN_FLIGHT, sizeof(VexMessenger::Message*))),
+pros::c::queue_t const VexMessenger::ReceivePool(pros::c::queue_create(MAX_MESSAGES_IN_FLIGHT, sizeof(VexMessenger::Message*))),
+#endif
+VexMessenger * const VexMessenger::v_messenger = new VexMessenger();

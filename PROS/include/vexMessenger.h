@@ -1,8 +1,15 @@
 #ifdef NOT_PROS
 #include "../../CPP/ThreadQueue.h"
+#include <stdexcept>
+#include <thread>
+#include <chrono>
+
+#define TIMEOUT_MAX ((uint32_t)0xffffffffUL)
 #else
 #include "main.h"
 #endif
+
+#define RETRY_FREQUENCY_MS 50
 
 #include "vexSerial.h"
 
@@ -46,9 +53,13 @@ private:
 
     //TODO - some thread bs here
 #else
-    const pros::c::queue_t q;
+    static const pros::c::queue_t AvailablePool;
+    static const pros::c::queue_t ReceivePool;
 
-    pros::Task recvTask
+    //used for the damn queue
+    static Message messagePool[MAX_MESSAGES_IN_FLIGHT];
+
+    pros::Task recvTask;
 #endif
 
     static void MessengerReceiver(void* params);
@@ -62,6 +73,34 @@ private:
         VexSerial::sendMessage((uint8_t const * const)(msg), msg->header.len);
     };
 public:
+    static VexMessenger *const v_messenger;
+
+    class UnexpectedDisconnection : public std::exception {};
+
+    VexMessenger(VexMessenger const &) = delete;
+    void operator=(VexMessenger const &) = delete;
+
+    inline bool isConnected(void) { return is_connected; }
+
+    // send a data message to the other side
+    //  may throw UnexpectedDisconnection if disconnected
+    inline void sendMessage(uint8_t const * const buff, uint8_t &len)
+    {
+        VexMessenger::Message out_msg;
+        out_msg.header.len = len + sizeof(VexMessenger::MessageHeader);
+        out_msg.header.msgType = static_cast<uint8_t>(VexMessenger::MessageTypes::MESSAGE_TYPE_DATA);
+        send_message(&out_msg);
+    }
+
+    // attempt a connection, return true if connection established
+    bool tryConnect(uint32_t const timeout_ms = 1000);
+
+    // blocking until connected
+    inline void connect(void){
+        tryConnect(TIMEOUT_MAX);
+    }
+
+    //TODO - disconnection
 };
 
 
@@ -69,36 +108,10 @@ public:
 // {
 // private:
 
-//     VexMessenger(void);
-//     ~VexMessenger();
-
-//     inline void send_message(Message const *const msg){
-//         VexSerial::v_ser->sendMessage((uint8_t const * const)(msg), msg->header.len);
-//     };
-    
-//     // returns true if a message was successfully received in time
-//     inline bool receive_message(Message * const msg, uint32_t const timeout_ms = TIMEOUT_MAX){
-//         uint8_t msgLen;
-//         //could do some assert that msgLen == msg->header.len
-//         return VexSerial::v_ser->receiveMessage((uint8_t * const)(msg), msgLen, timeout_ms);
-//     }
-
-//     // spin in a cycle for connect/disconnect
-//     bool try_cycle(uint32_t const timeout_ms, bool const isConnect);
-
-//     // handle the control message msg
-//     //  may alter the contents of msg
-//     void handle_control(VexMessenger::Message * const msg);
-
 // public:
-//     static VexMessenger *const v_messenger;
 
-//     class UnexpectedDisconnection : public std::exception {};
+//     
 
-//     VexMessenger(VexMessenger const &) = delete;
-//     void operator=(VexMessenger const &) = delete;
-
-//     inline bool isConnected(void) { return is_connected; }
 
 //     // attempt a connection, return true if connection established
 //     inline bool try_connect(uint32_t const timeout_ms = 1000){
@@ -141,13 +154,7 @@ public:
     
 //     // send a data message to the other side
 //     //  may throw UnexpectedDisconnection if disconnected
-//     inline void sendMessage(uint8_t const * const buff, uint8_t &len)
-//     {
-//         VexMessenger::Message out_msg;
-//         out_msg.header.len = len + sizeof(VexMessenger::MessageHeader);
-//         out_msg.header.msgType = static_cast<uint8_t>(VexMessenger::MessageTypes::MESSAGE_TYPE_DATA);
-//         send_message(&out_msg);
-//     }
+
 
 //     // NOT Implemented
 //     // set the callback function for echo-ack messages

@@ -47,7 +47,7 @@ void VexSerial::deserializeMsg(const uint8_t* const ser_msg, uint8_t* dst, const
     *nextWrite = '\x00';
 }
 
-//TODO - techincally a 2-copy implementation
+// TODO - techincally a 2-copy implementation
 //  could get down to a 1-copy if needed
 void VexSerial::receiveMessage(uint8_t* const dst, uint8_t& size){
     uint8_t recvBuffer[STREAM_SZ_REQUIRED];

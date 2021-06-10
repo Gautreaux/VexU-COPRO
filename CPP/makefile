@@ -11,7 +11,7 @@ EXECUTABLE=Main
 .PHONY: _BUILD_SETUP_ clean
 
 	
-$(EXECUTABLE) : main.cpp clean OFiles/vexMessenger.o
+$(EXECUTABLE) : main.cpp clean _BUILD_SETUP_ OFiles/vexMessenger.o
 	$(CC_COMPILE_LINK_EXE_AUTO)
 
 OFiles/vexSerial.o : ../PROS/src/vexSerial.cpp ../PROS/include/vexSerial.h
