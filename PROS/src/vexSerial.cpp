@@ -4,7 +4,7 @@
 #include "vexSerial.h"
 #endif
 
-void serializeMsg(const uint8_t* const msg, uint8_t* dst, const uint8_t size){
+void VexSerial::serializeMsg(const uint8_t* const msg, uint8_t* dst, const uint8_t size){
 
     const uint8_t* nextRead = msg;
     uint8_t* nextWrite = dst;
@@ -26,7 +26,7 @@ void serializeMsg(const uint8_t* const msg, uint8_t* dst, const uint8_t size){
     *(nextWrite) = '\x00';
 }
 
-void deserializeMsg(const uint8_t* const ser_msg, uint8_t* dst, const uint8_t size){
+void VexSerial::deserializeMsg(const uint8_t* const ser_msg, uint8_t* dst, const uint8_t size){
 
     const uint8_t* nextRead = ser_msg;
     uint8_t* nextWrite = dst;
@@ -45,4 +45,23 @@ void deserializeMsg(const uint8_t* const ser_msg, uint8_t* dst, const uint8_t si
     //add null terminator
     nextWrite--;
     *nextWrite = '\x00';
+}
+
+//TODO - techincally a 2-copy implementation
+//  could get down to a 1-copy if needed
+void VexSerial::receiveMessage(uint8_t* const dst, uint8_t& size){
+    uint8_t recvBuffer[STREAM_SZ_REQUIRED];
+
+    uint8_t chunkSize;
+    uint8_t* nextWrite = recvBuffer;
+    
+    *(nextWrite++) = fgetc(stdin);
+    while((chunkSize = *(nextWrite-1)) != 0){
+        fread(nextWrite, 1, chunkSize, stdin);
+        nextWrite += chunkSize;
+    }
+
+    const uint8_t messageLen = nextWrite - recvBuffer;
+    deserializeMsg(recvBuffer, dst, messageLen);
+    size = messageLen - 2;
 }

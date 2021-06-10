@@ -1,4 +1,5 @@
 #ifdef NOT_PROS
+#include "../../CPP/ThreadQueue.h"
 #else
 #include "main.h"
 #endif
@@ -38,10 +39,29 @@ private:
         MESSAGE_TYPE_ECHO_ACK = 6
     };
 
-    volatile bool is_connected;
+    static volatile bool is_connected;
+
+#ifdef NOT_PROS
+    static ThreadQueue q;
+
+    //TODO - some thread bs here
+#else
+    const pros::c::queue_t q;
+
+    pros::Task recvTask
+#endif
+
+    static void MessengerReceiver(void* params);
 
     VexMessenger(void);
     ~VexMessenger();
+
+    static void handle_control(VexMessenger::Message * const msg);
+
+    static inline void send_message(Message const *const msg){
+        VexSerial::sendMessage((uint8_t const * const)(msg), msg->header.len);
+    };
+public:
 };
 
 

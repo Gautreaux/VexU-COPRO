@@ -1,0 +1,7 @@
+
+
+class ThreadQueue
+{
+private:
+public:
+};

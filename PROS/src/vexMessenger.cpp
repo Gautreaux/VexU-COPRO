@@ -4,7 +4,10 @@
 #include "vexMessenger.h"
 #endif
 
-VexMessenger::VexMessenger(void) : is_connected(false)
+volatile bool VexMessenger::is_connected = false;
+
+#ifdef NOT_PROS
+VexMessenger::VexMessenger(void)
 {
     // TODO - launch async reciever,
 }
@@ -16,7 +19,82 @@ VexMessenger::~VexMessenger(void)
     //     try_disconnect(200);
     // }
 }
+#else
+VexMessenger::VexMessenger(void) : 
+q(pros::c::queue_create(MAX_MESSAGES_IN_FLIGHT, sizeof(VexMessenger::Message))),
+recvTask(MessengerReceiver, nullptr, "recvTask")
+{
+    // TODO - launch async reciever,
+}
 
+VexMessenger::~VexMessenger(void)
+{
+    // TODO - try and disconnect cleanly
+    // if(isConnected()){
+    //     try_disconnect(200);
+    // }
+
+    pros::c::queue_delete(q);
+}
+#endif
+
+// loops forever in own task/thread reading messages
+void VexMessenger::MessengerReceiver(void* params){
+    VexMessenger::Message response;
+    uint8_t messageSize;
+
+    while(true){
+        VexSerial::receiveMessage((uint8_t*)(&response), messageSize);
+
+        if(response.header.msgType == VexMessenger::MessageTypes::MESSAGE_TYPE_DATA){
+            // TODO - queue
+// #ifdef NOT_PROS
+//             //TODO - q.append
+// #else
+//             pros::c::queue_append(q, )
+// #endif
+        }else{
+            handle_control(&response);
+        }
+    }
+}
+
+void VexMessenger::handle_control(VexMessenger::Message * const msg){
+    switch (msg->header.msgType){
+        case VexMessenger::MessageTypes::MESSAGE_TYPE_HELLO:
+            msg->header.msgType = static_cast<uint8_t>(VexMessenger::MessageTypes::MESSAGE_TYPE_HELLO_ACK);
+            send_message(msg);
+            is_connected = true;
+            break;
+        case VexMessenger::MessageTypes::MESSAGE_TYPE_HELLO_ACK:
+            is_connected = true;
+            break;
+        case VexMessenger::MessageTypes::MESSAGE_TYPE_GOODBYE:
+            msg->header.msgType = static_cast<uint8_t>(VexMessenger::MessageTypes::MESSAGE_TYPE_GOODBYE_ACK);
+            send_message(msg);
+            is_connected = false;
+            // stopAll();
+            break;
+        case VexMessenger::MessageTypes::MESSAGE_TYPE_GOODBYE_ACK:
+            is_connected = false;
+            // stopAll();
+            break;
+        case VexMessenger::MessageTypes::MESSAGE_TYPE_ECHO:
+            msg->header.msgType = static_cast<uint8_t>(VexMessenger::MessageTypes::MESSAGE_TYPE_ECHO_ACK);
+            send_message(msg);
+            break;
+        case VexMessenger::MessageTypes::MESSAGE_TYPE_ECHO_ACK:
+            //TODO - probably want to do something here w.r.t processing but whatever
+            break;
+        default:
+#ifdef NOT_PROS
+            printf("handle_control illegal control: %d", msg->header.msgType);
+#else
+            pros::lcd::print(6, "handle_control illegal control: %d", msg->header.msgType);
+#endif
+            throw msg->header.msgType;
+    }
+}
 
 // bool VexMessenger::try_cycle(uint32_t const timeout_ms, bool const isConnect){
 //     uint8_t const out = static_cast<uint8_t>((isConnect) ? ((VexMessenger::MessageTypes::MESSAGE_TYPE_HELLO)) : (VexMessenger::MessageTypes::MESSAGE_TYPE_GOODBYE));

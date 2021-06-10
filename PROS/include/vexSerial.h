@@ -11,6 +11,7 @@
 #define MAX_MESSAGES_IN_FLIGHT 10
 #define ILLEGAL_CHAR 'p'
 
+namespace VexSerial{
 // escape the p characters from the message
 //  size should not include trailing null character
 //  but trailing null should probably be present for safety
@@ -37,6 +38,11 @@ inline void sendMessage(const uint8_t* const msg, const uint8_t size){
     serializeMsg(msg, serialBuffer, size);
     sendMessageDirectly(serialBuffer, size + 2);
 }
+
+// receive and deserialize directly into a buffer
+void receiveMessage(uint8_t* const dst, uint8_t& size);
+
+};
 
 // class VexSerial {
 // private:
