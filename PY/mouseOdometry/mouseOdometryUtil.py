@@ -86,13 +86,15 @@ def determineDFromDeltasRotation(deltas : List[float], known_rotation_rad : floa
     attempted = set()
 
     while True:
-        # if round_ctr % 10 == 0:
-        #     print(f"Target: {known_rotation_rad}")
+        if round_ctr % 10 == 0:
+            print(f"Target: {known_rotation_rad}")
+
+        current_in = float(input("Enter guess:"))
 
         raw = determineTranslationFromDelta(deltas, current_in)[2] 
         delta = raw - known_rotation_rad
 
-        # print(f"Round {round_ctr}: current_in {current_in}, raw {raw}, delta {delta}, step {step_size}")
+        print(f"Round {round_ctr}: current_in {current_in}, resolved {raw}, delta {delta}, step {step_size}")
 
         if abs(delta) < precision:
             break

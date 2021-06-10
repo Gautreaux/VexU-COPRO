@@ -1,6 +1,6 @@
 # from .vexSerial import v_ser
 # from .vexSerial.vexSerialTest import wordTest, bytesTest
-from PY.mouseOdometry.mouseOdometry import getCurrentDeltas, launchReadLoop, resolveDValue, shutdownOdom
+from PY.mouseOdometry.mouseOdometry import getCurrentDeltas, getCurrentOdomPosition, launchOdomLoop, launchReadLoop, resetCurrentDeltas, resolveDValue, shutdownOdom, LEFT_MOUSE_USB_PATH, RIGHT_MOUSE_USB_PATH
 from PY.mouseOdometry.mouseOdometryUtil import determineDFromDeltasRotation, determineMiceByPath, determineTranslationFromDelta
 from .vexMessenger import v_messenger
 # from .vexMessenger.vexMessengerTest import bytesTest
@@ -16,8 +16,54 @@ import threading
 from typing import Final
 
 def main():
-    resolveDValue()
+    import os
+    print(os.getcwd())
+
+    with open("sampledata.csv", 'r') as inFile:
+        i = iter(inFile)
+        headers = next(i)
+        for line in i:
+            l = list(map(lambda x: float(x.strip()), line.strip().split(",")))
+            print(l)
+            print(f"  {determineDFromDeltasRotation(l[:4], l[4])}")
+
     exit(0)
+
+    RESOLVED_D = 8.2
+
+    micePaths = determineMiceByPath([LEFT_MOUSE_USB_PATH, RIGHT_MOUSE_USB_PATH])
+    print(micePaths)
+    launchReadLoop(*micePaths)
+
+    resetCurrentDeltas()
+
+    try:
+        time.sleep(5000)
+    except KeyboardInterrupt:
+        pass
+
+    print(f"Deltas: {getCurrentDeltas()}")
+
+    exit(0)
+    launchOdomLoop(RESOLVED_D)
+    
+    v_messenger.connect()
+    imu_start = vexAction.VEX_readIMU()
+    
+    while True:
+        now_imu = vexAction.VEX_readIMU()
+        delta_imu = now_imu - imu_start
+        _, _, delta_odom = getCurrentOdomPosition()
+        print(f"IMU: {delta_imu}, ODOM: {delta_odom}")
+        print(f"  Difference: {delta_imu - delta_odom}")
+        time.sleep(1)
+
+    vexAction.VEX_stop()
+    v_messenger.disconnect()
+    shutdownOdom()
+
+    # resolveDValue()
+    # exit(0)
     
     # print("Test mouse odometry")
 

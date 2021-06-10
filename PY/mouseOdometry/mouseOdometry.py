@@ -5,14 +5,13 @@ import threading
 from typing import Final, List, Tuple
 
 from ..vexController import vexAction
-from .mouseOdometryUtil import determineDFromDeltasRotation, determineMiceByPath
+from .mouseOdometryUtil import determineDFromDeltasRotation, determineMiceByPath, determineTranslationFromDelta
 from ..vexMessenger import v_messenger
 
 LEFT_MOUSE_USB_PATH = "1.3"
 RIGHT_MOUSE_USB_PATH = "1.2"
 
 _ODOM_M_VALS = [0, 0, 0, 0]
-_ODOM_D_VALUE = 1
 _ODOM_NOW_POS = [0,0,0]
 
 _ODOM_CALC_FREQUENCY_S = .05 # 20 times a second 
@@ -29,6 +28,21 @@ def _ODOM_readLoop(left_mouse, right_mouse):
 
     print(f"Odom reader opening mice: {left_mouse}, {right_mouse}")
 
+    def asSigned(i):
+        if i > 127:
+            return -1
+        elif i > 0:
+            return +1
+        else:
+            return 0
+
+        # if i > 127:
+        #     ii = -(256 - i)
+        # else:
+        #     ii = i
+        # # print(f"{i} --> {ii}")
+        # return ii
+
     with open(left_mouse, 'rb') as lm_file:
         with open(right_mouse, 'rb') as rm_file:
             read_list : Final = [lm_file, rm_file]
@@ -37,21 +51,22 @@ def _ODOM_readLoop(left_mouse, right_mouse):
                 for f in r:
                     k = f.read(3)
                     if f == lm_file:
-                        _ODOM_M_VALS[0] += 0 if k[1] == 0 else (1 if k[1] < 128 else - 1)
-                        _ODOM_M_VALS[1] += 0 if k[2] == 0 else (1 if k[2] < 128 else - 1)
+                        _ODOM_M_VALS[0] += asSigned(k[1])
+                        _ODOM_M_VALS[1] += asSigned(k[2])
                     else:
-                        _ODOM_M_VALS[2] += 0 if k[1] == 0 else (1 if k[1] < 128 else - 1)
-                        _ODOM_M_VALS[3] += 0 if k[2] == 0 else (1 if k[2] < 128 else - 1)
+                        _ODOM_M_VALS[2] += asSigned(k[1])
+                        _ODOM_M_VALS[3] += asSigned(k[2])
 
 # do not call
 #   manages the calcualtions
-def _ODOM_calcLoop():
+def _ODOM_calcLoop(params : Tuple[float]):
     global _ODOM_M_VALS
-    global _ODOM_D_VALUE
 
     global _ODOM_NOW_POS
 
     global _ODOM_RUNNING
+
+    d_value = params
 
     # probably all zeros to begin with
     lastOdomM = _ODOM_M_VALS[:]
@@ -68,9 +83,17 @@ def _ODOM_calcLoop():
             # no update
             continue
 
+        # print(f"Odom delta: {odomDelta}")
+
         # is this true?
         # we only need deltas now, so can overwrite the old
         lastOdomM = nowOdomM
+
+        changeTuple = determineTranslationFromDelta(odomDelta, d_value)
+
+        # print(f"changeTuple: {changeTuple}")
+
+        _ODOM_NOW_POS[2] += changeTuple[2]
 
 
 def launchReadLoop(left_mouse : str, right_mouse : str) -> threading.Thread:
@@ -82,10 +105,10 @@ def launchReadLoop(left_mouse : str, right_mouse : str) -> threading.Thread:
     return t
 
 
-def launchOdomLoop() -> threading.Thread:
+def launchOdomLoop(d_value : float) -> threading.Thread:
     global _ODOM_THREADS
     # TODO - something to catch if there are crashing errors
-    t = threading.Thread(target=_ODOM_calcLoop, daemon=True)
+    t = threading.Thread(target=_ODOM_calcLoop, daemon=True, args = (d_value, ))
     t.start()
     _ODOM_THREADS[1] = t
     return t
@@ -134,11 +157,13 @@ def getCurrentOdomPosition() -> List[float]:
     ]
 
 def _doDValueTrial() -> float:
+    assert(v_messenger.isConnected())
+    print("Starting Trial")
     vexAction.VEX_stop()
     resetCurrentDeltas()
     imu_start = vexAction.VEX_readIMU()
     vexAction.VEX_startRotation(True)
-    time.sleep(3)
+    time.sleep(.3)
     # v_messenger.sendMessage(b"\x00")
     vexAction.VEX_stop()
     imu_delta = vexAction.VEX_readIMU() - imu_start
@@ -152,7 +177,7 @@ def _doDValueTrial() -> float:
 
     return d_value
 
-def resolveDValue(samples = 5) -> float:
+def resolveDValue(samples = 15) -> float:
     micePaths = determineMiceByPath([LEFT_MOUSE_USB_PATH, RIGHT_MOUSE_USB_PATH])
     print(micePaths)
     launchReadLoop(*micePaths)
@@ -162,6 +187,7 @@ def resolveDValue(samples = 5) -> float:
     vexAction.VEX_stop()
 
     l = []
+    e_q = 0
 
     while len(l) < samples:
         try:
@@ -170,10 +196,13 @@ def resolveDValue(samples = 5) -> float:
             time.sleep(1)
         except ValueError:
             print ("Error occurred")
+            e_q += 1
 
     vexAction.VEX_stop()
     v_messenger.disconnect()
 
     d_value = sum(l) / len(l)
+    print(f"Errors qty: {e_q}")
+    print(f"D list: {l}")
     print(f"Resolved d: {d_value}")
     return d_value
