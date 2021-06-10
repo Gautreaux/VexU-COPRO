@@ -134,50 +134,32 @@ bool VexMessenger::tryConnect(uint32_t const timeout_ms){
     return false;
 }
 
-// bool VexMessenger::readDataMessage(uint8_t * const buff, uint8_t& len, uint32_t const timeout_ms){
-//     VexMessenger::Message response;
+//TODO - there is a way to convert this to a no-copy operation
+bool VexMessenger::readDataMessage(uint8_t * const buff, uint8_t& len, uint32_t const timeout_ms){
+    VexMessenger::Message* msg;
 
-//     uint32_t timeRemaining = timeout_ms;
-//     uint32_t startTime = pros::millis();
+    if(!isConnected()){
+        return false;
+    }
 
-//     while(isConnected()){
-//         if(receive_message(&response, timeRemaining)){
-//             if(response.header.msgType == VexMessenger::MessageTypes::MESSAGE_TYPE_DATA){
-//                 len = response.header.len - sizeof(VexMessenger::MessageHeader);
-//                 memcpy(buff, response.data, len);
-//                 return true;
-//             }else{
-//                 // some form of a control message that we need to process
-//                 handle_control(&response);
+#ifdef NOT_PROS
+    // TODO
+#else
+    if(pros::c::queue_recv(ReceivePool, &msg, timeout_ms)){
+        len = msg->len - sizeof(VexMessenger::MessageHeader);
+        memcpy(buff, msg->data, len);
+        pros::c::queue_append(AvailavlePool, &msg, TIMEOUT_MAX);
+        return true;
+    }
+    // either a disconnect or a timeout
+    return false;
+#endif
+}
 
-//                 //and update time remaining
-//                 timeRemaining = timeout_ms - (pros::millis() - startTime);
-//                 if(timeRemaining > timeout_ms){
-//                     //under flow occurred
-//                     return false;
-//                 }
-//             }
-//         }else{
-//             //timeout
-//             return false;
-//         }
-//     }
-
-//     return false;
-// }
-
-// void VexMessenger::readDataMessageBlocking(uint8_t * const buff, uint8_t& len){
-//     bool b = readDataMessage(buff, len, TIMEOUT_MAX);
-//     if(b){
-//         return;
-//     }
-
-//     throw UnexpectedDisconnection();
-// }
 #ifdef NOT_PROS
 #else
 pros::c::queue_t const VexMessenger::AvailablePool(pros::c::queue_create(MAX_MESSAGES_IN_FLIGHT, sizeof(VexMessenger::Message*)));
 pros::c::queue_t const VexMessenger::ReceivePool(pros::c::queue_create(MAX_MESSAGES_IN_FLIGHT, sizeof(VexMessenger::Message*)));
-VexMessenger::Message VexMessenger::messagePool[MAX_MESSAGES_IN_FLIGHT];
 #endif
+VexMessenger::Message VexMessenger::messagePool[MAX_MESSAGES_IN_FLIGHT];
 VexMessenger * const VexMessenger::v_messenger = new VexMessenger();
