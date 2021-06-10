@@ -20,6 +20,18 @@ void processMessage(uint8_t const  * const buffer, const uint8_t len){
     case COMMAND_ENUM::START_ROTATION_RIGHT:
         startRotation(buffer, len, false);
         return;
+    case COMMAND_ENUM::START_SLOW_ROTATION_LEFT:
+        startRotation(buffer, len, true, SLOW_ROTATION_INTENSITY);
+        return;
+    case COMMAND_ENUM::START_SLOW_ROTATION_RIGHT:
+        startRotation(buffer, len, false, SLOW_ROTATION_INTENSITY);
+        return;
+    case COMMAND_ENUM::START_MAX_ROTATION_LEFT:
+        startRotation(buffer, len, true, MAX_ROTATION_INTENSITY);
+        return;
+    case COMMAND_ENUM::START_MAX_ROTATION_RIGHT:
+        startRotation(buffer, len, false, MAX_ROTATION_INTENSITY);
+        return;
     case COMMAND_ENUM::READ_IMU:
         readIMU(buffer, len);
         return;
@@ -44,13 +56,13 @@ void jitter(uint8_t const  * const buffer, const uint8_t len){
     //TODO - will need a coro?
 }
 
-void startRotation(uint8_t const  * const buffer, const uint8_t len, const bool isRotationLeft) {
+void startRotation(uint8_t const  * const buffer, const uint8_t len, const bool isRotationLeft, const uint8_t intensity) {
     if(isRotationLeft){
-        updateMotorGroup(leftDrive, -ROTATION_INTENSITY);
-        updateMotorGroup(rightDrive, ROTATION_INTENSITY);
+        updateMotorGroup(leftDrive, -intensity);
+        updateMotorGroup(rightDrive, intensity);
     }else{
-        updateMotorGroup(leftDrive, ROTATION_INTENSITY);
-        updateMotorGroup(rightDrive, -ROTATION_INTENSITY);
+        updateMotorGroup(leftDrive, intensity);
+        updateMotorGroup(rightDrive, -intensity);
     }
 }
 

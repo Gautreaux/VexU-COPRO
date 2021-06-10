@@ -11,6 +11,10 @@ enum class COMMAND_ENUM {
     JITTER = 10,
     START_ROTATION_LEFT = 11,
     START_ROTATION_RIGHT = 12,
+    START_SLOW_ROTATION_LEFT = 13,
+    START_SLOW_ROTATION_RIGHT = 14,
+    START_MAX_ROTATION_LEFT = 17,
+    START_MAX_ROTATION_RIGHT = 18,
     READ_IMU = 32,
     RESET_IMU = 33,
 };
@@ -26,6 +30,9 @@ extern pros::Imu IMU;
 #define ROTATION_INTENSITY 127
 #endif
 
+#define SLOW_ROTATION_INTENSITY 30
+#define MAX_ROTATION_INTENSITY 127
+
 // process a single message instance
 void processMessage(uint8_t const  * const buffer, const uint8_t len);
 
@@ -37,7 +44,7 @@ void text(uint8_t const  * const buffer, const uint8_t len);
 
 void jitter(uint8_t const  * const buffer, const uint8_t len);
 
-void startRotation(uint8_t const  * const buffer, const uint8_t len, const bool isRotationLeft = true);
+void startRotation(uint8_t const  * const buffer, const uint8_t len, const bool isRotationLeft = true, const uint8_t intensity = ROTATION_INTENSITY);
 
 void readIMU(uint8_t const  * const buffer, const uint8_t len);
 
