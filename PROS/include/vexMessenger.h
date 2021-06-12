@@ -3,8 +3,15 @@
 #include <stdexcept>
 #include <thread>
 #include <chrono>
-
+#include <sys/types.h> // for open
+#include <sys/stat.h> // for open
+#include <fcntl.h> // for open
 #define TIMEOUT_MAX ((uint32_t)0xffffffffUL)
+#define SERIAL_FILE_PATH "/dev/ttyACM1"
+
+#ifdef DEBUG
+#define DEBUG_NOT_PROS
+#endif
 #else
 #include "main.h"
 #endif
@@ -48,10 +55,13 @@ private:
 
     static volatile bool is_connected;
 
+    // friend ThreadQueue<VexMessenger::Message*, MAX_MESSAGES_IN_FLIGHT>;
 #ifdef NOT_PROS
-    static ThreadQueue<VexMessenger::Message*, MAX_MESSAGES_IN_FLIGHT> q;
+    using TQ = ThreadQueue<VexMessenger::Message*, MAX_MESSAGES_IN_FLIGHT>;
+    static VexMessenger::TQ AvailablePool;
+    static VexMessenger::TQ ReceivePool;
 
-    //TODO - some thread bs here
+    std::thread recvThread;
 #else
     static const pros::c::queue_t AvailablePool;
     static const pros::c::queue_t ReceivePool;
@@ -98,7 +108,7 @@ public:
         tryConnect(TIMEOUT_MAX);
     }
 
-  // read messages until a data message
+    // read messages until a data message
     //  returns true if a message was successfully read
     //  returns false if a disconnect occurs before timeout
     //  returns false if a timeout occurs before the next data message

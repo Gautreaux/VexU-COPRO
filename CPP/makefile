@@ -2,26 +2,27 @@
 CXX=g++
 CPPFLAGS=
 CPPSTD=-std=c++17
-CPP_COMP_COM=$(CXX) $(CPPFLAGS) $(CPPSTD) -DNOT_PROS
-CC_COMPLIE_NO_LINK_AUTO=$(CPP_COMP_COM) -c -Wall -o $@ $<
-CC_COMPILE_LINK_EXE_AUTO=$(CPP_COMP_COM) -Wall -o $@ $< OFiles/*.o
+CPP_COMP_COM=$(CXX) $(CPPFLAGS) $(CPPSTD) -DNOT_PROS -lpthread -Wall -DDEBUG
+CC_COMPLIE_NO_LINK_AUTO=$(CPP_COMP_COM) -c -o $@ $<
+CC_COMPILE_LINK_EXE_AUTO=$(CPP_COMP_COM) -o $@ $< OFiles/*.o
 
 EXECUTABLE=Main
 
-.PHONY: _BUILD_SETUP_ clean
+.PHONY: _BUILD_SETUP_ clean run
 
 	
-$(EXECUTABLE) : main.cpp clean _BUILD_SETUP_ OFiles/vexMessenger.o
+$(EXECUTABLE) : main.cpp OFiles/vexMessenger.o
 	$(CC_COMPILE_LINK_EXE_AUTO)
 
 OFiles/vexSerial.o : ../PROS/src/vexSerial.cpp ../PROS/include/vexSerial.h
 	$(CC_COMPLIE_NO_LINK_AUTO)
 
-OFiles/vexMessenger.o : ../PROS/src/vexMessenger.cpp ../PROS/include/vexSerial.h OFiles/vexSerial.o
+OFiles/vexMessenger.o : ../PROS/src/vexMessenger.cpp ../PROS/include/vexSerial.h OFiles/vexSerial.o ThreadQueue.h
 	$(CC_COMPLIE_NO_LINK_AUTO)
 
-OFiles/ThreadQueue.o : ThreadQueue.h ThreadQueue.cpp
-	$(CC_COMPLIE_NO_LINK_AUTO)
+
+run: $(EXECUTABLE)
+	./$(EXECUTABLE)
 
 clean:
 	rm -rf OFiles/*

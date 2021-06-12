@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <cstdio>
+#include <unistd.h>
 #else
 #include "main.h"
 #endif
@@ -42,6 +43,10 @@ inline void sendMessage(const uint8_t* const msg, const uint8_t size){
 // receive and deserialize directly into a buffer
 void receiveMessage(uint8_t* const dst, uint8_t& size);
 
+#ifdef NOT_PROS
+// file descriptor of the serial file
+extern int SerialFD;
+#endif
 };
 
 // class VexSerial {

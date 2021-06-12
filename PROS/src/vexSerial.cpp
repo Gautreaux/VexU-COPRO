@@ -54,7 +54,19 @@ void VexSerial::receiveMessage(uint8_t* const dst, uint8_t& size){
 
     uint8_t chunkSize;
     uint8_t* nextWrite = recvBuffer;
-    
+#ifdef NOT_PROS
+    read(VexSerial::SerialFD, nextWrite++, 1);
+#else
+    *(nextWrite++) = fgetc(stdin);
+#endif
+    while((chunkSize = *(nextWrite-1)) != 0){
+#ifdef NOT_PROS
+        read(VexSerial::SerialFD, nextWrite, chunkSize);
+#else
+        fread(nextWrite, 1, chunkSize, stdin);
+#endif
+        nextWrite += chunkSize;
+    }
     *(nextWrite++) = fgetc(stdin);
     while((chunkSize = *(nextWrite-1)) != 0){
         fread(nextWrite, 1, chunkSize, stdin);
@@ -65,3 +77,5 @@ void VexSerial::receiveMessage(uint8_t* const dst, uint8_t& size){
     deserializeMsg(recvBuffer, dst, messageLen);
     size = messageLen - 2;
 }
+
+int VexSerial::SerialFD = 0;
