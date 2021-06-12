@@ -11,7 +11,13 @@ int main(int argc, char** argv){
     uint8_t buffer[128];
     uint8_t len;
 
+    VexMessenger::v_messenger->connect();
+
+    printf("Meessenger Connected\n");
+
     while(true){
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
         // if(VexMessenger::v_messenger->isConnected()){
         //     len = 0;

@@ -53,17 +53,26 @@ void VexSerial::receiveMessage(uint8_t* const dst, uint8_t& size){
     uint8_t recvBuffer[STREAM_SZ_REQUIRED];
 
     if(VexSerial::SerialFD == 0){
-        VexSerial::SerialFD = open(SERIAL_FILE_PATH, O_RDONLY);
-    }
+        VexSerial::SerialFD = open(SERIAL_FILE_PATH, O_RDWR);
+        // if(VexSerial::SerialFD < 0){
+        //     printf("Error %d occurred when opening SerialFD\n", VexSerial::SerialFD);
+        //     exit(VexSerial::SerialFD);
+        // }
 
-    printf("WE MADE IT HERE\n");
-    while(true){
-        char c;
-        // printf("SFD: %d\n", VexSerial::SerialFD);
-        ssize_t sz = read(VexSerial::SerialFD, &c, 1);
-        if(sz > 0){
-            printf("Bytes %02X\n", c);
-        }
+        // struct termios tty;
+        // if(tcgetattr(VexSerial::SerialFD, &tty)){
+        //     printf("Error %d getting tcgetattr\n", errno);
+        //     exit(errno);
+        // }
+
+        // cfsetospeed(&tty, B115200);
+        // cfsetispeed(&tty, B115200);
+
+
+        // if(tcsetattr(VexSerial::SerialFD, TCSANOW, &tty) != 0){
+        //     printf("Error %d setting tcsetattr\n", errno);
+        //     exit(errno);
+        // }
     }
 
     uint8_t chunkSize;
@@ -93,5 +102,5 @@ void VexSerial::receiveMessage(uint8_t* const dst, uint8_t& size){
 }
 
 #ifdef NOT_PROS
-int VexSerial::SerialFD = 0;
+volatile int VexSerial::SerialFD = 0;
 #endif

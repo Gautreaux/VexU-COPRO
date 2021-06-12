@@ -6,6 +6,9 @@
 #include <sys/stat.h> // for open
 #include <fcntl.h> // for open
 #include <unistd.h>
+#include <stdlib.h>
+#include <termios.h>
+#include <errno.h>
 #define SERIAL_FILE_PATH "/dev/ttyACM1"
 #else
 #include "main.h"
@@ -17,6 +20,11 @@
 #define ILLEGAL_CHAR 'p'
 
 namespace VexSerial{
+#ifdef NOT_PROS
+// file descriptor of the serial file
+volatile extern int SerialFD;
+#endif
+
 // escape the p characters from the message
 //  size should not include trailing null character
 //  but trailing null should probably be present for safety
@@ -30,6 +38,13 @@ void deserializeMsg(const uint8_t* const ser_msg, uint8_t* dst, const uint8_t si
 //  size should be number of bytes to send
 inline void sendMessageDirectly(const uint8_t* const msg, const uint8_t size){
     // TODO - will this need to be adapted for non-pros operation?
+#ifdef DEBUG_NOT_PROS
+    printf("Sending Message (sfd: %d) (%d): ", VexSerial::SerialFD, size);
+    for(unsigned int i = 0; i < size; i++){
+        printf("%02X ", msg[i]);
+    }
+    printf("\n");
+#endif
     fwrite(msg, size, 1, stdout);
     fflush(stdout);
 }
@@ -47,10 +62,7 @@ inline void sendMessage(const uint8_t* const msg, const uint8_t size){
 // receive and deserialize directly into a buffer
 void receiveMessage(uint8_t* const dst, uint8_t& size);
 
-#ifdef NOT_PROS
-// file descriptor of the serial file
-extern int SerialFD;
-#endif
+
 };
 
 // class VexSerial {
