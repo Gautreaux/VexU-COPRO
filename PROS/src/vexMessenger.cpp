@@ -71,6 +71,11 @@ void VexMessenger::MessengerReceiver(void* params){
 #endif
 
         if(response.header.msgType == VexMessenger::MessageTypes::MESSAGE_TYPE_DATA){
+            if(VexMessenger::v_messenger->isConnected()){
+                //destroy any data messages before connection
+                continue;
+            }
+
             VexMessenger::Message* thisMsg;
 #ifdef NOT_PROS
             if(AvailablePool.get(&thisMsg, TIMEOUT_MAX)){

@@ -52,6 +52,20 @@ void VexSerial::deserializeMsg(const uint8_t* const ser_msg, uint8_t* dst, const
 void VexSerial::receiveMessage(uint8_t* const dst, uint8_t& size){
     uint8_t recvBuffer[STREAM_SZ_REQUIRED];
 
+    if(VexSerial::SerialFD == 0){
+        VexSerial::SerialFD = open(SERIAL_FILE_PATH, O_RDONLY);
+    }
+
+    printf("WE MADE IT HERE\n");
+    while(true){
+        char c;
+        // printf("SFD: %d\n", VexSerial::SerialFD);
+        ssize_t sz = read(VexSerial::SerialFD, &c, 1);
+        if(sz > 0){
+            printf("Bytes %02X\n", c);
+        }
+    }
+
     uint8_t chunkSize;
     uint8_t* nextWrite = recvBuffer;
 #ifdef NOT_PROS
@@ -78,4 +92,6 @@ void VexSerial::receiveMessage(uint8_t* const dst, uint8_t& size){
     size = messageLen - 2;
 }
 
+#ifdef NOT_PROS
 int VexSerial::SerialFD = 0;
+#endif

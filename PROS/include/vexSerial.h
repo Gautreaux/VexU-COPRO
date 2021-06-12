@@ -2,7 +2,11 @@
 #include <string.h>
 #include <stdint.h>
 #include <cstdio>
+#include <sys/types.h> // for open
+#include <sys/stat.h> // for open
+#include <fcntl.h> // for open
 #include <unistd.h>
+#define SERIAL_FILE_PATH "/dev/ttyACM1"
 #else
 #include "main.h"
 #endif
