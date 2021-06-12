@@ -14,7 +14,7 @@ recvThread(VexMessenger::MessengerReceiver, nullptr)
     // TODO - launch async reciever,
     int serialFD = open(SERIAL_FILE_PATH, O_RDONLY);
     if(serialFD < 0){
-        printf("Error %d occurred whic opening serial file.\n", serialFD);
+        printf("Error %d occurred while opening serial file.\n", serialFD);
     }
     // make the file non-blocking
     // fcntl(serialFD, F_SETFL, O_NONBLOCK);
@@ -55,8 +55,16 @@ VexMessenger::~VexMessenger(void)
 // loops forever in own task/thread reading messages
 void VexMessenger::MessengerReceiver(void* params){
 
+#ifndef NOT_PROS
+    //idk why this is necessary
+    pros::delay(2000);
+#endif
+
 #ifdef DEBUG_NOT_PROS
     printf("Receiver Started\n");
+#endif
+#ifdef DEBUG_PROS
+    pros::lcd::print(6, "%d: RECV TASK STARTED", __LINE__);
 #endif
     VexMessenger::Message response;
     uint8_t messageSize;
@@ -66,6 +74,11 @@ void VexMessenger::MessengerReceiver(void* params){
 
 #ifdef DEBUG_NOT_PROS
         printf("Received new message of len %d : header [%02X %02X %02X %02X]\n",
+            messageSize, response.header.len, response.header.csum, response.header.msgID, response.header.msgType
+        );
+#endif
+#ifdef DEBUG_PROS
+        pros::lcd::print(6, "%d: New message of len %d : header [%02X %02X %02X %02X]\n", __LINE__,
             messageSize, response.header.len, response.header.csum, response.header.msgID, response.header.msgType
         );
 #endif

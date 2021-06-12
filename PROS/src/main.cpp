@@ -79,9 +79,51 @@ void opcontrol() {
 
 	uint8_t nextLine = 4;
 	uint8_t msgLen;
-	uint8_t recvBuffer[MAX_MESSAGE_LEN];
+	uint8_t recvBuffer[200];
+
+#ifdef DEBUG_PROS
+	pros::lcd::print(0, "PROS running in DEBUG_PROS");
+#endif
 
 	pros::lcd::print(1, "VEX_Messenger ---");
+
+	char myMessage[] = "apple";
+
+	std::string messages[] = {"apple", "banana", "cherry", "date"};
+
+	while (true)
+	{
+		for(unsigned int i = 0; i < 4; i++){
+			VexMessenger::v_messenger->sendMessage((const uint8_t*)messages[i].c_str(), messages[i].length());
+		}
+
+		// printf("APPLE\n");
+		// pros::delay(1000);
+		// printf("BANANA\n");
+		// pros::delay(1000);
+		// printf("CHERRY\n");
+		// pros::delay(1000);
+		// printf("DATE\n");
+		// pros::delay(1000);
+	}
+	
+
+	while (true)
+	{
+
+		// if(VexMessenger::v_messenger->isConnected()){
+		// 	pros::lcd::print(1, "VEX_Messenger connected");
+		// 	VexMessenger::v_messenger->sendMessage((uint8_t*)myMessage, strlen(myMessage) + 1);
+		// 	pros::delay(500);
+		// }else{
+		// 	if(VexMessenger::v_messenger->tryConnect()){
+				
+		// 	}else{
+		// 		pros::lcd::print(1, "VEX_Messenger connection failed");
+		// 	}
+		// }
+	}
+	
 
 	// while (true) {
 	// 	pros::lcd::print(0,"Hello");

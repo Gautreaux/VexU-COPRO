@@ -50,32 +50,58 @@ void VexSerial::deserializeMsg(const uint8_t* const ser_msg, uint8_t* dst, const
 // TODO - techincally a 2-copy implementation
 //  could get down to a 1-copy if needed
 void VexSerial::receiveMessage(uint8_t* const dst, uint8_t& size){
-    uint8_t recvBuffer[STREAM_SZ_REQUIRED];
 
+#ifdef DEBUG_PROS
+    pros::lcd::print(6, "%d: receiveMessage Entry", __LINE__);
+    while(true){
+        char c = fgetc(stdin);
+        pros::lcd::print(7, "%02X", c);
+        pros::delay(1000);
+    }
+#endif
+
+    uint8_t recvBuffer[STREAM_SZ_REQUIRED];
     uint8_t chunkSize;
     uint8_t* nextWrite = recvBuffer;
+
 #ifdef NOT_PROS
     read(VexSerial::SerialFD, nextWrite++, 1);
 #else
     *(nextWrite++) = fgetc(stdin);
+#ifdef DEBUG_PROS
+    pros::lcd::print(6, "%d: first chunk size: %d 0x%02X", __LINE__, *(nextWrite-1), *(nextWrite-1));
+    pros::delay(1000);
 #endif
+#endif
+
     while((chunkSize = *(nextWrite-1)) != 0){
+
 #ifdef NOT_PROS
         read(VexSerial::SerialFD, nextWrite, chunkSize);
 #else
         fread(nextWrite, 1, chunkSize, stdin);
 #endif
-        nextWrite += chunkSize;
-    }
-    *(nextWrite++) = fgetc(stdin);
-    while((chunkSize = *(nextWrite-1)) != 0){
-        fread(nextWrite, 1, chunkSize, stdin);
-        nextWrite += chunkSize;
-    }
 
+        nextWrite += chunkSize;
+#ifdef DEBUG_PROS
+        pros::lcd::print(6, "%d: next chunk size: %d 0x%02X", __LINE__, *(nextWrite-1));
+        pros::delay(1000);
+#endif
+    }
     const uint8_t messageLen = nextWrite - recvBuffer;
+
+#ifdef DEBUG_PROS
+    pros::lcd::print(6, "%d: read done, raw-len: %d", __LINE__, messageLen);
+#endif
+
     deserializeMsg(recvBuffer, dst, messageLen);
     size = messageLen - 2;
+
+#ifdef DEBUG_PROS
+    pros::lcd::print(6, "%d: receiveMessage Exit", __LINE__);
+#endif
 }
 
+#ifdef NOT_PROS
 int VexSerial::SerialFD = 0;
+#endif

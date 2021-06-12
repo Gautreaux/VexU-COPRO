@@ -26,6 +26,9 @@ void deserializeMsg(const uint8_t* const ser_msg, uint8_t* dst, const uint8_t si
 //  size should be number of bytes to send
 inline void sendMessageDirectly(const uint8_t* const msg, const uint8_t size){
     // TODO - will this need to be adapted for non-pros operation?
+    // pros::delay(2000);
+    pros::lcd::print(5, "Sending %d: %02X %02X %02X %02X %s", size, msg[0], msg[1], msg[2], msg[3], (char*)(msg) + 4);
+
     fwrite(msg, size, 1, stdout);
     fflush(stdout);
 }

@@ -37,6 +37,8 @@
 #include  "pros/apix.h"
 #include "api.h"
 
+#define DEBUG_PROS
+
 /**
  * You should add more #includes here
  */

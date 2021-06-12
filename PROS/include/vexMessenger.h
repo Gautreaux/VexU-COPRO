@@ -92,11 +92,12 @@ public:
 
     // send a data message to the other side
     //  may throw UnexpectedDisconnection if disconnected
-    inline void sendMessage(uint8_t const * const buff, uint8_t &len)
+    inline void sendMessage(uint8_t const * const buff, uint8_t len)
     {
         VexMessenger::Message out_msg;
         out_msg.header.len = len + sizeof(VexMessenger::MessageHeader);
         out_msg.header.msgType = static_cast<uint8_t>(VexMessenger::MessageTypes::MESSAGE_TYPE_DATA);
+        // memcpy(out_msg.data, buff, len);
         send_message(&out_msg);
     }
 
