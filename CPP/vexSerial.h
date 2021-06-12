@@ -1,3 +1,6 @@
+#ifndef __VEX_SERIAL__
+#define __VEX_SERIAL__
+
 #include <string.h>
 #include <stdint.h>
 #include <cstdio>
@@ -23,9 +26,8 @@ void deserializeMsg(const uint8_t* const ser_msg, uint8_t* dst, const uint8_t si
 // send a preserialized message directly
 //  size should be number of bytes to send
 inline void sendMessageDirectly(const uint8_t* const msg, const uint8_t size){
-    // TODO - will this need to be adapted for non-pros operation?
-    fwrite(msg, size, 1, stdout);
-    fflush(stdout);
+    printf("SerialFD = %d\n", SerialFD);
+    write(SerialFD, msg, size);
 }
 
 // serialize and send a message
@@ -41,3 +43,5 @@ inline void sendMessage(const uint8_t* const msg, const uint8_t size){
 // receive and deserialize directly into a buffer
 void receiveMessage(uint8_t* const dst, uint8_t& size);
 }
+
+#endif //__VEX_SERIAL__

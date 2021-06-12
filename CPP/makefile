@@ -11,10 +11,13 @@ EXECUTABLE=Main
 .PHONY: _BUILD_SETUP_ clean run
 
 	
-$(EXECUTABLE) : main.cpp OFiles/vexSerial.o
+$(EXECUTABLE) : main.cpp OFiles/vexMessenger.o
 	$(CC_COMPILE_LINK_EXE_AUTO)
 
 OFiles/vexSerial.o : vexSerial.cpp vexSerial.h
+	$(CC_COMPLIE_NO_LINK_AUTO)
+
+OFiles/vexMessenger.o : vexMessenger.cpp vexMessenger.h OFiles/vexSerial.o ThreadQueue.h
 	$(CC_COMPLIE_NO_LINK_AUTO)
 
 run: $(EXECUTABLE)

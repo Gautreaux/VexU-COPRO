@@ -10,6 +10,7 @@
 #define SERIAL_FILE_PATH "/dev/ttyACM1"
 
 #include "vexSerial.h"
+#include "vexMessenger.h"
 
 int
 set_interface_attribs (int fd, int speed, int parity)
@@ -85,9 +86,16 @@ int main(){
     char hello[]    = {05, 04, 00, 00, 01, 00};
 
     // write(serialFD, hello, 6);
+    VexSerial::SerialFD = serialFD;
+    VexMessenger::initMessenger();
+    VexMessenger::connect();
 
     VexSerial::SerialFD = serialFD;
     int ctr = 0;
+
+    char textMessage[] = " myText";
+    textMessage[0] = 1;
+    VexMessenger::sendMessage((const uint8_t *)textMessage, 8);
 
     printf("WE MADE IT HERE\n");
     while(true){
@@ -99,11 +107,6 @@ int main(){
         // else{
         //     printf("GAH\n");
         // }
-
-        if(++ctr == 3){
-            write(serialFD, hello, 6);
-        }
-
         uint8_t msgBuff[128];
         memset(msgBuff, 0, 128);
         uint8_t size = 0;
