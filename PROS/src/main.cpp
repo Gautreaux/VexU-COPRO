@@ -97,6 +97,11 @@ void opcontrol() {
 	//	forces a realease before toggling again
 	bool lastPress = false;
 
+	char upmsg[]    = "up-pressed";
+	char leftmsg[]  = "left-pressed";
+	char rightmsg[] = "right-pressed";
+	char downmsg[]  = "down-pressed";
+
 	master.print(0, 0, "%s", "CTRL DISABLED");
 
 	pros::lcd::print(1, "VEX_Messenger ---");
@@ -147,6 +152,19 @@ void opcontrol() {
 		}
 
 		if(master.is_connected()){
+			if(master.get_digital(pros::E_CONTROLLER_DIGITAL_UP)){
+				VexMessenger::v_messenger->sendMessage((const uint8_t*)(upmsg), strlen(upmsg));
+			}
+			if(master.get_digital(pros::E_CONTROLLER_DIGITAL_LEFT)){
+				VexMessenger::v_messenger->sendMessage((const uint8_t*)(leftmsg), strlen(leftmsg));
+			}
+			if(master.get_digital(pros::E_CONTROLLER_DIGITAL_RIGHT)){
+				VexMessenger::v_messenger->sendMessage((const uint8_t*)(rightmsg), strlen(rightmsg));
+			}
+			if(master.get_digital(pros::E_CONTROLLER_DIGITAL_DOWN)){
+				VexMessenger::v_messenger->sendMessage((const uint8_t*)(downmsg), strlen(downmsg));
+			}
+
 			if(!lastPress && master.get_digital(pros::E_CONTROLLER_DIGITAL_X)){
 				controllerOn = !controllerOn;
 				master.print(0, 0, "%s", (controllerOn ? "CTRL ENABLED " : "CTRL DISABLED"));
