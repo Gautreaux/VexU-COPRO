@@ -11,6 +11,10 @@
 #define RETRY_INTERVAL_MS 200u
 
 namespace VexMessenger {
+    class UnexpectedDisconnection : public std::exception
+    {
+    };
+
     // start up the messenger
     //  must call once
     //  should probably call only once
@@ -33,6 +37,18 @@ namespace VexMessenger {
         printf("DING\n");
         tryConnect(TIMEOUT_MAX);
     }
+
+    // read messages until a data message
+    //  returns true if a message was successfully read
+    //  returns false if a disconnect occurs before timeout
+    //  returns false if a timeout occurs before the next data message
+    //  immediately returns false if disconnected
+    bool readDataMessage(uint8_t * const buff, uint8_t& len, uint32_t const timeout_ms);
+
+    // read messages until a data message
+    //  will throw UnexpectedDisconnection if disconnected data message
+    //    or if called while disconnected
+    void readDataMessageBlocking(uint8_t * const buff, uint8_t& len);
 };
 
 #endif //__VEX_MESSENGER__

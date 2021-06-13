@@ -52,15 +52,29 @@ void VexSerial::receiveMessage(uint8_t* const dst, uint8_t& size){
 
     uint8_t chunkSize;
     uint8_t* nextWrite = recvBuffer;
+
     
-    read(VexSerial::SerialFD, nextWrite++, 1);
+    do{
+        read(VexSerial::SerialFD, nextWrite, 1);
+    } while (*nextWrite == 0);
+    nextWrite++;
 
     while((chunkSize = *(nextWrite-1)) != 0){
         read(VexSerial::SerialFD, nextWrite, chunkSize);
+
         nextWrite += chunkSize;
     }
 
     const uint8_t messageLen = nextWrite - recvBuffer;
+
+#ifdef DEBUG
+    printf("Raw Read (%d): ", messageLen);
+    for(unsigned int i = 0; i < messageLen; i++){
+        printf("%02X ", recvBuffer[i]);
+    }
+    printf("\n");
+#endif
+
     deserializeMsg(recvBuffer, dst, messageLen);
     size = messageLen - 2;
 }

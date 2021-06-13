@@ -7,7 +7,8 @@
 #include <termios.h>
 #include <string.h>
 #include <errno.h>
-#define SERIAL_FILE_PATH "/dev/ttyACM1"
+//TODO - auto resolver
+#define SERIAL_FILE_PATH "/dev/ttyACM2"
 
 #include "vexSerial.h"
 #include "vexMessenger.h"
@@ -74,7 +75,7 @@ set_blocking (int fd, int should_block)
 int main(){
     int serialFD = open(SERIAL_FILE_PATH, O_RDWR | O_NOCTTY | O_SYNC);
     if(serialFD < 0){
-        printf("Error %d occurred whic opening serial file.\n", serialFD);
+        printf("Error %d occurred which opening serial file.\n", errno);
     }
     // make the file non-blocking
     // fcntl(serialFD, F_SETFL, O_NONBLOCK);
@@ -82,16 +83,11 @@ int main(){
     set_interface_attribs(serialFD, B115200, 0);
     set_blocking(serialFD, 1);
 
-    char helloAck[] = {05, 04, 00, 00, 02, 00};
-    char hello[]    = {05, 04, 00, 00, 01, 00};
 
     // write(serialFD, hello, 6);
     VexSerial::SerialFD = serialFD;
     VexMessenger::initMessenger();
     VexMessenger::connect();
-
-    VexSerial::SerialFD = serialFD;
-    int ctr = 0;
 
     char textMessage[] = " myText";
     textMessage[0] = 1;
@@ -99,25 +95,35 @@ int main(){
 
     printf("WE MADE IT HERE\n");
     while(true){
-        // char c;
-        // ssize_t sz = read(serialFD, &c, 1);
-        // if(sz > 0){
-        //     printf("Bytes %d %02X\n", sz, c);
-        // }
-        // else{
-        //     printf("GAH\n");
-        // }
+        // // char c;
+        // // ssize_t sz = read(serialFD, &c, 1);
+        // // if(sz > 0){
+        // //     printf("Bytes %d %02X\n", sz, c);
+        // // }
+        // // else{
+        // //     printf("GAH\n");
+        // // }
         uint8_t msgBuff[128];
         memset(msgBuff, 0, 128);
         uint8_t size = 0;
 
-        VexSerial::receiveMessage(msgBuff, size);
+        // // VexSerial::receiveMessage(msgBuff, size);
 
-        printf("Received a message of size %d : ", size);
-        for(unsigned int i = 0; i < size; i++){
-            printf("%02X ", msgBuff[i]);
+        // printf("Received a message of size %d : ", size);
+        // for(unsigned int i = 0; i < size; i++){
+        //     printf("%02X ", msgBuff[i]);
+        // }
+        // printf("\n");
+
+        if(VexMessenger::readDataMessage(msgBuff, size, 2000)){
+                printf("New message (%d): %s\n", size, msgBuff);
+        }else{
+                printf("No message received.\n");
         }
-        printf("\n");
-        
+
+        // std::string s;
+        // printf("Enter message:\n");
+        // std::cin >> s;
+        // //TODO - do something with this
     }
 }
