@@ -193,6 +193,9 @@ namespace VexMessenger
         VexMessenger::Message* thisMessage;
 
         if(receivePool.get(&thisMessage, timeout_ms)){
+#ifdef DEBUG
+            printf("RecvPool read %p\n", thisMessage);
+#endif
             len = thisMessage->header.len;
             memcpy(buff, thisMessage->data, len);
             availablePool.put(&thisMessage, TIMEOUT_MAX);

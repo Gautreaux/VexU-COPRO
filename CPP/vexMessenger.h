@@ -34,7 +34,6 @@ namespace VexMessenger {
     // blocking until connected
     inline void connect(void)
     {
-        printf("DING\n");
         tryConnect(TIMEOUT_MAX);
     }
 
