@@ -14,9 +14,6 @@
 
 
 int main(){
-
-
-    // write(serialFD, hello, 6);
     VexSerial::SerialFD = utils::getSetupSerialFD();
 
     if(VexSerial::SerialFD < 0){
@@ -33,25 +30,11 @@ int main(){
 
     printf("WE MADE IT HERE\n");
     while(true){
-        // // char c;
-        // // ssize_t sz = read(serialFD, &c, 1);
-        // // if(sz > 0){
-        // //     printf("Bytes %d %02X\n", sz, c);
-        // // }
-        // // else{
-        // //     printf("GAH\n");
-        // // }
+
         uint8_t msgBuff[128];
         memset(msgBuff, 0, 128);
         uint8_t size = 0;
 
-        // // VexSerial::receiveMessage(msgBuff, size);
-
-        // printf("Received a message of size %d : ", size);
-        // for(unsigned int i = 0; i < size; i++){
-        //     printf("%02X ", msgBuff[i]);
-        // }
-        // printf("\n");
 
         if(VexMessenger::readDataMessage(msgBuff, size, 2000)){
                 printf("New message (%d): %s\n", size, msgBuff);
