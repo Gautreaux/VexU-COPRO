@@ -1,4 +1,5 @@
 #include "main.h"
+#include "vexController.h"
 // #include "vexSerial.h"
 #include "vexMessenger.h"
 #include "util.h"
@@ -9,25 +10,33 @@
  * All other competition modes are blocked by initialize; it is recommended
  * to keep execution time for this mode under a few seconds.
  */
+pros::Imu IMU(IMU_PORT);
+
 void initialize() {
 	pros::lcd::initialize();
 
 	//initialize the motors:
 	//TODO - does the gearing/encoder setting matter?
-	leftDrive.emplace_back(LEFT_DRIVE_MOTOR_1_PORT, true);
-	leftDrive.emplace_back(LEFT_DRIVE_MOTOR_2_PORT, true);
-	leftDrive.emplace_back(LEFT_DRIVE_MOTOR_3_PORT, true);
+	leftDrive.emplace_back(LEFT_DRIVE_MOTOR_1_PORT, false);
+	leftDrive.emplace_back(LEFT_DRIVE_MOTOR_2_PORT, false);
+	leftDrive.emplace_back(LEFT_DRIVE_MOTOR_3_PORT, false);
+	leftDrive.emplace_back(LEFT_DRIVE_MOTOR_4_PORT, false);
 
-	rightDrive.emplace_back(RIGHT_DRIVE_MOTOR_1_PORT, false);
-	rightDrive.emplace_back(RIGHT_DRIVE_MOTOR_2_PORT, false);
-	rightDrive.emplace_back(RIGHT_DRIVE_MOTOR_3_PORT, false);
+	rightDrive.emplace_back(RIGHT_DRIVE_MOTOR_1_PORT, true);
+	rightDrive.emplace_back(RIGHT_DRIVE_MOTOR_2_PORT, true);
+	rightDrive.emplace_back(RIGHT_DRIVE_MOTOR_3_PORT, true);
+	rightDrive.emplace_back(RIGHT_DRIVE_MOTOR_4_PORT, true);
 
-	intake.emplace_back(LEFT_INTAKE_MOTOR_PORT, false);
-	intake.emplace_back(RIGHT_INTAKE_MOTOR_PORT, true);
+	// intake.emplace_back(LEFT_INTAKE_MOTOR_PORT, false);
+	// intake.emplace_back(RIGHT_INTAKE_MOTOR_PORT, true);
 
-	rollers.emplace_back(MIDDLE_ROLLER_MOTOR_1_PORT, false);
-	rollers.emplace_back(MIDDLE_ROLLER_MOTOR_2_PORT, false);
-	rollers.emplace_back(TOP_ROLLER_MOTOR_PORT, false);
+	// rollers.emplace_back(MIDDLE_ROLLER_MOTOR_1_PORT, false);
+	// rollers.emplace_back(MIDDLE_ROLLER_MOTOR_2_PORT, false);
+	// rollers.emplace_back(TOP_ROLLER_MOTOR_PORT, false);
+
+	//in docs, not working
+	// IMU.set_reversed(true);
+	IMU.reset();
 }
 
 /**
@@ -81,10 +90,29 @@ void opcontrol() {
 	uint8_t msgLen;
 	uint8_t recvBuffer[MAX_MESSAGE_LEN];
 
+	// used for turning controller on and off
+	bool controllerOn = false;
+
+	// used for making the on off more reliable
+	//	forces a realease before toggling again
+	bool lastPress = false;
+
+	char upmsg[]    = "up-pressed";
+	char leftmsg[]  = "left-pressed";
+	char rightmsg[] = "right-pressed";
+	char downmsg[]  = "down-pressed";
+
+	master.print(0, 0, "%s", "CTRL DISABLED");
+
 	pros::lcd::print(1, "VEX_Messenger ---");
 
 	while (true) {
-		pros::lcd::print(0,"Hello");
+#ifdef LOW_POWER_MODE
+		pros::lcd::print(0, "LOW POWER MODE");
+		master.print(1, 0, "%s", "LOW POWER MODE");
+#else
+		pros::lcd::print(0,"Normal Operation");
+#endif
 		// if(VexSerial::v_ser->receiveMessageIfAvailable(recvBuffer, msgLen))
 		// {
 		// 	pros::lcd::print(
@@ -113,7 +141,8 @@ void opcontrol() {
 
 			if(VexMessenger::v_messenger->readDataMessage(recvBuffer, msgLen, 50)){
 				recvBuffer[msgLen] = 0; //add null terminator
-				pros::lcd::print(6, "%s", recvBuffer);
+				pros::lcd::print(6, "%d: %02X %02X %02X %02X  %02X %02X %02X %02X", msgLen, recvBuffer[0], recvBuffer[1], recvBuffer[2], recvBuffer[3], recvBuffer[4], recvBuffer[5], recvBuffer[6], recvBuffer[7]);
+				processMessage(recvBuffer, msgLen);
 			}
 		}
 		else{
@@ -123,27 +152,54 @@ void opcontrol() {
 		}
 
 		if(master.is_connected()){
-			pros::lcd::print(4, "Controller Connected");
-
-			int32_t leftY = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
-			int32_t rightY = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y);
-			updateDrive(leftY, rightY);
-
-			if(master.get_digital(pros::E_CONTROLLER_DIGITAL_R2)){
-				updateMotorGroup(intake, 127);
-			}else if(master.get_digital(pros::E_CONTROLLER_DIGITAL_R1)){
-				updateMotorGroup(intake, -127);
-			}else{
-				updateMotorGroup(intake, 0);
+			if(master.get_digital(pros::E_CONTROLLER_DIGITAL_UP)){
+				VexMessenger::v_messenger->sendMessage((const uint8_t*)(upmsg), strlen(upmsg));
+			}
+			if(master.get_digital(pros::E_CONTROLLER_DIGITAL_LEFT)){
+				VexMessenger::v_messenger->sendMessage((const uint8_t*)(leftmsg), strlen(leftmsg));
+			}
+			if(master.get_digital(pros::E_CONTROLLER_DIGITAL_RIGHT)){
+				VexMessenger::v_messenger->sendMessage((const uint8_t*)(rightmsg), strlen(rightmsg));
+			}
+			if(master.get_digital(pros::E_CONTROLLER_DIGITAL_DOWN)){
+				VexMessenger::v_messenger->sendMessage((const uint8_t*)(downmsg), strlen(downmsg));
 			}
 
-			if(master.get_digital(pros::E_CONTROLLER_DIGITAL_L2)){
-				updateMotorGroup(rollers, 127);
-			}else if(master.get_digital(pros::E_CONTROLLER_DIGITAL_L1)){
-				updateMotorGroup(rollers, -127);
-			}else{
-				updateMotorGroup(rollers, 0);
+			if(!lastPress && master.get_digital(pros::E_CONTROLLER_DIGITAL_X)){
+				controllerOn = !controllerOn;
+				master.print(0, 0, "%s", (controllerOn ? "CTRL ENABLED " : "CTRL DISABLED"));
+				lastPress = true;
+			}else if(lastPress && !master.get_digital(pros::E_CONTROLLER_DIGITAL_X)){
+				lastPress = false;
 			}
+
+			pros::lcd::print(4, "Controller Connected: %s", (controllerOn ? "ON" : "OFF"));
+
+			if(controllerOn){
+				int32_t leftY = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
+				int32_t rightY = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y);
+				updateDrive(leftY, rightY);
+
+				if(master.get_digital(pros::E_CONTROLLER_DIGITAL_R2)){
+					updateMotorGroup(intake, 127);
+				}else if(master.get_digital(pros::E_CONTROLLER_DIGITAL_R1)){
+					updateMotorGroup(intake, -127);
+				}else{
+					updateMotorGroup(intake, 0);
+				}
+
+				if(master.get_digital(pros::E_CONTROLLER_DIGITAL_L2)){
+					updateMotorGroup(rollers, 127);
+				}else if(master.get_digital(pros::E_CONTROLLER_DIGITAL_L1)){
+					updateMotorGroup(rollers, -127);
+				}else{
+					updateMotorGroup(rollers, 0);
+				}
+			}
+		}else{
+			pros::lcd::print(4, "Controller Disconnected");
 		}
+
+		pros::lcd::print(5, "IMU reading: %f", -IMU.get_rotation());
 	}
 }

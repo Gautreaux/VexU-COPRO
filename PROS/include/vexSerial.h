@@ -1,3 +1,6 @@
+#ifndef __VEX_SERIAL__
+#define __VEX_SERIAL__
+
 #include "main.h"
 
 #define MAX_MESSAGE_LEN 100
@@ -96,3 +99,5 @@ public:
         return receiveMessage(recv_out, size_out, 0);
     }
 };
+
+#endif

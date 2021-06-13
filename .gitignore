@@ -7,3 +7,6 @@ PROS/include/*/**
 PROS/include/api.h
 **/__pycache__/**
 PY/CV/dev/out_vid.avi
+*.pyc
+CPP/Main
+CPP/OFiles/**
