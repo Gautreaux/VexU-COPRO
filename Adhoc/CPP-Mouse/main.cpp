@@ -10,8 +10,12 @@
 #include <atomic>
 #include <thread>
 
+#include <iostream>
+#include <vector>
+
 std::atomic_bool running{true};
 std::atomic_uint64_t deltaBuffer{0};
+std::atomic_bool reset{false};
 
 void sigInt(int s)
 {
@@ -19,11 +23,37 @@ void sigInt(int s)
     running.store(false);
 }
 
+class kappa {
+public:
+    int largestXDiff;
+
+    int64_t totals[4];
+
+    double lastRotation;
+    double absolute100percentCorrectLocation[2];
+
+    kappa(){
+
+    }
+};
+
+void printKappaHeaders(void){
+    printf("largestxDiff, totals[0], totals[1], totals[2], totals[3], lastRotation, location[0], location[1]\n");
+}
+
+std::ostream& operator<<(std::ostream& o, kappa& ka){
+    std::cout << ka.largestXDiff << ", " << ka.totals[0] << ", " << ka.totals[1] << ", " << ka.totals[2] << ", " << ka.totals[3];
+    std::cout << ", " << ka.lastRotation << ", " << ka.absolute100percentCorrectLocation[0] << ", " << ka.absolute100percentCorrectLocation[1];
+
+    return o;
+}
+
+std::vector<kappa> kappa_list;
 
 void threadTarget()
 {
-    const char *LEFT_MOUSE_PATH = "/dev/input/mouse0";
-    const char *RIGHT_MOUSE_PATH = "/dev/input/mouse2";
+    const char *LEFT_MOUSE_PATH = "/dev/input/mouse2";
+    const char *RIGHT_MOUSE_PATH = "/dev/input/mouse0";
 
     int leftMouse = open(LEFT_MOUSE_PATH, O_RDONLY);
     int rightMouse = open(RIGHT_MOUSE_PATH, O_RDONLY);
@@ -118,22 +148,47 @@ void threadTarget()
             valuePtr[3] += deltas[3];
         }while(!deltaBuffer.compare_exchange_weak(value, newValue, std::memory_order::memory_order_acq_rel));
     }
+
+    printf("Thread 1 exit clean\n");
 }
 
-int main()
+void threadTarget2()
 {
-    std::thread myThread(threadTarget);
+    constexpr double distanceBetweenMice = 1500;
 
     int largestXDiff = 0;
 
     int64_t totals[] = {0, 0, 0, 0};
 
-    constexpr double distanceBetweenMice = 1500;
-
     double lastRotation = 0.0;
     double absolute100percentCorrectLocation[2] = {0,0};
 
     while(running.load()){
+        if(reset.load()){
+            kappa ka;
+            ka.largestXDiff = largestXDiff;
+            ka.totals[0] = totals[0];
+            ka.totals[1] = totals[1];
+            ka.totals[2] = totals[2];
+            ka.totals[3] = totals[3];
+            ka.lastRotation = lastRotation;
+            ka.absolute100percentCorrectLocation[0] = absolute100percentCorrectLocation[0];
+            ka.absolute100percentCorrectLocation[1] = absolute100percentCorrectLocation[1];
+
+            kappa_list.push_back(ka);
+
+            largestXDiff = 0;
+            totals[0] = 0;
+            totals[1] = 0;
+            totals[2] = 0;
+            totals[3] = 0;
+            lastRotation = 0.0;
+            absolute100percentCorrectLocation[0] = 0;
+            absolute100percentCorrectLocation[1] = 0;
+
+            reset.store(false);
+        }
+
         sleep(1);
 
         uint64_t deltas_64 = deltaBuffer.load();
@@ -212,8 +267,33 @@ int main()
         printf("% 12.4f % 12.4f % 12.4f\n", absolute100percentCorrectLocation[0], absolute100percentCorrectLocation[1], lastRotation);
     }
 
+    printf("thread 2 clean exit\n");
+}
+
+int main()
+{
+    std::thread myThread(threadTarget);
+    std::thread myThread2(threadTarget2);
+
+    while(running.load())
+    {
+        char c;
+        std::cin >> c;
+        reset.store(true);
+    }
+
+    printf("Pre join\n");
+
     myThread.join();
+    myThread2.join();
 
-    // printf("HELLO\n");
+    printf("Post join\n");
 
+    printf("There are %d elemnts in the kappa_list\n", kappa_list.size());
+    printKappaHeaders();
+    for(auto& ka : kappa_list){
+        std::cout << ka << std::endl;
+    }
+
+    return 0;
 }
