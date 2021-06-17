@@ -7,6 +7,7 @@ PROS/include/*/**
 PROS/include/api.h
 **/__pycache__/**
 *.avi
+*.mp4
 *.pyc
 CPP/Main
 CPP/OFiles/**
