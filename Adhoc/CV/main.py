@@ -228,7 +228,7 @@ def resolveVexGoalByVex(frame, show=None):
     # TODO - return actual goal position
     return (0,0)
 
-def hsvTesting(frame):
+def hsvTesting(frame, video=None):
     t = list(range(0, 257, 16))
     regions = []
     for i in range(len(t) - 2):
@@ -263,8 +263,8 @@ def hsvTesting(frame):
             region1 = (region1[0], 179)
         chunks = []
         for region2 in regions:
-            print(f"Region {region1} {region2}")
-            continue
+            # print(f"Region {region1} {region2}")
+            # continue
 
             # apply region and region 2 thresholds
             mask = cv.inRange(f, np.array([region1[0], region2[0], 0]), np.array([region1[1], region2[1], 255]))
@@ -296,7 +296,7 @@ def hsvTesting(frame):
                     # too sparse
                     continue
 
-                
+
                 cv.rectangle(f_cpy, (x,y), (x+w,y+h), (0,255,0), 7)
                 # cv.drawContours(f_cpy, [c], 0, (0, 255, 0), 3)
                 validContours.append(((region1, region2), actualArea, (x,y,w,h), (actualArea, w*h, w/h, fullness_ratio, height_ratio)))
@@ -376,20 +376,18 @@ def hsvTesting(frame):
         try:
             return sum(x * y for x,y in zip(iterable, weights)) / sum(weights)
         except ZeroDivisionError:
-            math.inf
+            return math.inf
 
     center = (
         int(weightedAverage(x_centers, scores)),
         int(weightedAverage(y_centers, scores))
     )
     frame_annotated = frame.copy()
-    cv.circle(frame_annotated, center, 20, (0,0,255), -3)
+    cv.circle(frame_annotated, center, 20, (0,0,255), 3)
 
 
     # now to actually do proper edge detection on the images
     #   first get masks of the bounding rectangles
-
-
 
     # magic layout function
     h = 1
@@ -411,6 +409,8 @@ def hsvTesting(frame):
     targetDims = (int(frame.shape[1]*scaleFactor), int(frame.shape[0]*scaleFactor))
 
     print(f"Scaling {scaleFactor} to {targetDims}")
+
+    v_points = []
 
     def masksGen():
         assert(len(validContours) == len(validMasks))
@@ -434,16 +434,19 @@ def hsvTesting(frame):
             img_gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
             img_blur = cv.GaussianBlur(img_gray, (3,3), 0)
             im_canny = cv.Canny(img_blur, 20, 50)
-
+            # TODO - try houghLines instead of houghLinesP
             lines = cv.HoughLinesP(im_canny, 1, np.pi / 90, 5, minLineLength=50, maxLineGap=10)
             if lines is None:
                 lines = []
+            if len(lines) > 15:
+                # too many lines
+                continue
             new_img = img.copy()
             lines_better = []
             lines_mask = []
             for line in lines:
                 x0, y0, x1, y1 = line[0]
-                
+
                 if x1 == x0:
                     # vertical line
                     r = math.inf
@@ -490,11 +493,52 @@ def hsvTesting(frame):
             #     else:
             #         print(f"Ordinary Line: {lines_better[i]} marked {lines_mask[i]}")
 
+            leftLines = []
+            rightLines = []
+            for line,line_m in zip(lines_better, lines_mask):
+                if line_m:
+                    if line[4] > 0:
+                        rightLines.append(line)
+                    else:
+                        leftLines.append(line)
+            
+            for l_line in leftLines:
+                for r_line in rightLines:
+                    # calculate intersection
+                    # small chance for a problem here if 
+                    #   one line r = -pi/2 and other f = pi/2
+                    #       (parallel lines w/ opposite slopes)
+                    #       note, this does not apply to a general
+                    #           -x and +x pair
+
+                    x1,y1,x2,y2,_ = l_line
+                    x3,y3,x4,y4,_ = r_line
+
+                    denom = (((x1-x2)*(y3-y4)) - ((y1-y2)*(x3-x4)))
+
+                    if denom == 0:
+                        print(f"0 denom?: {l_line} {r_line}")
+                        continue
+
+                    x_n = (((x1*y2) - (y1 * x2))*(x3-x4)) - ((x1-x2)*((x3*y4) - (y3*x4)))
+                    y_n = (((x1*y2) - (y1 * x2))*(y3-y4)) - ((y1-y2)*((x3*y4) - (y3*x4)))
+
+                    intersection = (
+                        (x_n / denom),
+                        (y_n / denom)
+                    )
+
+                    # print(f"Intersection: {intersection}")
+                    cv.circle(frame_annotated, (int(intersection[0]), int(intersection[1])), 20, (255,128,128), 3)
+
+                    v_points.append(intersection)
+
             for i in range(len(lines_better)):
                 x0, y0, x1, y1, r = lines_better[i]
 
                 if lines_mask[i] == True:
                     c = (0,0,255)
+                    cv.line(frame_annotated, (x0,y0),(x1,y1), (0,0,128), 3)
                 else:
                     c = (128, 0, 0)
 
@@ -518,15 +562,30 @@ def hsvTesting(frame):
         rows.append(cv.hconcat(chunks))
     masks_group = cv.vconcat(rows)
 
+    if len(v_points) > 0:
+        # find the mean of the points
+        v_points_x = [x[0] for x in v_points]
+        v_points_y = [y[1] for y in v_points]
+
+        x_m = int(round(sum(v_points_x) / len(v_points_x)))
+        y_m = int(round(sum(v_points_y) / len(v_points_y)))
+
+        print(f"Intersection average: {(x_m, y_m)}")
+
+        # annotate on images
+        cv.circle(frame_annotated, (x_m, y_m), 20, (0,255,0), 4)
 
 
     cv.imshow('thresholds', total)
     cv.imshow('img-focus', focus)
     cv.imshow('mask-focus', masks_group)
     cv.imshow('annotated', frame_annotated)
-    while True:
-        if cv.waitKey(10) & 0xFF == ord('q'):
-            break
+    if video:
+        video.write(frame_annotated)
+    else:
+        while True:
+            if cv.waitKey(10) & 0xFF == ord('q'):
+                break
 
 def hsvTesting2(frame):
     t = list(range(0, 257, 16))
@@ -614,12 +673,15 @@ def cv_main():
 
     # from file
     # capture = cv.VideoCapture("dev/out_vid.avi")
-    capture = cv.VideoCapture("dev/swirlTestVid (9).mp4")
+    capture = cv.VideoCapture("dev/swirlTestVid (12).mp4")
 
     if not capture.isOpened():
         print("Camera could not be opened")
         exit()
     print("Camera connected")
+
+    # out = cv.VideoWriter(f'out_vid.{round(time.time())}.avi', cv.VideoWriter_fourcc('M', 'J', 'P', 'G'), 10, (int(capture.get(3)), int(capture.get(4))))
+    out = None
 
     while True:
         r, f = capture.read()
@@ -634,7 +696,7 @@ def cv_main():
         # resolveVexGoalByChevrons(f_in, show=SHOW_NO_BLOCK)
         # resolveVexGoalByGreen(f, show=SHOW_NO_BLOCK)
         # resolveVexGoalByVex(f_in, show=SHOW_NO_BLOCK)
-        hsvTesting(f)
+        hsvTesting(f, out)
         if cv.waitKey(1) & 0xFF == ord('q'):
             break
 
