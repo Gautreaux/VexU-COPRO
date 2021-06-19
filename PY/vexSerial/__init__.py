@@ -1,7 +1,6 @@
 from .vexSerial import VexSerial
 
-# v_ser : VexSerial = VexSerial()
-v_ser = None
+v_ser : VexSerial = VexSerial()
 
 def newInit(void):
     raise Exception("VexSerial is singleton, cannot create new instances")
