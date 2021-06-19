@@ -758,13 +758,7 @@ def hsvTesting3(frame, video = None):
 
             cv.circle(frame_annotated, (x_c, y_c), 15, (0, 0, 255), -1)
 
-
-    
     # extract clustering of points
-
-
-
-
 
     frames_to_show.append(("original", frame))
     frames_to_show.append(("annotated", frame_annotated))
@@ -801,7 +795,7 @@ def cv_main():
     # exit(0)
 
     # from camera
-    capture = cv.VideoCapture(1)
+    capture = cv.VideoCapture(1, cv.CAP_DSHOW)
 
     # from file
     # capture = cv.VideoCapture("dev/out_vid.avi")

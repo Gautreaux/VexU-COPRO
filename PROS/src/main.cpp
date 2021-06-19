@@ -105,14 +105,14 @@ void opcontrol() {
 	master.print(0, 0, "%s", "CTRL DISABLED");
 
 	pros::lcd::print(1, "VEX_Messenger ---");
-
-	while (true) {
 #ifdef LOW_POWER_MODE
 		pros::lcd::print(0, "LOW POWER MODE");
 		master.print(1, 0, "%s", "LOW POWER MODE");
 #else
 		pros::lcd::print(0,"Normal Operation");
 #endif
+
+	while (true) {
 		// if(VexSerial::v_ser->receiveMessageIfAvailable(recvBuffer, msgLen))
 		// {
 		// 	pros::lcd::print(

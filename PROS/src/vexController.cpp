@@ -38,8 +38,11 @@ void processMessage(uint8_t const  * const buffer, const uint8_t len){
     case COMMAND_ENUM::RESET_IMU:
         resetIMU(buffer, len);
         return;
+    case COMMAND_ENUM::GOAL_POS:
+        goalPos(buffer, len);
+        return;
     default:
-        pros::lcd::print(7, "Illegal Command: 0x%X", buffer[0]);
+        pros::lcd::print(7, "Illegal Command: 0x%X (%d)", buffer[0], buffer[0]);
         return;
     }
 }
@@ -76,4 +79,33 @@ void readIMU(uint8_t const  * const buffer, const uint8_t len){
 
 void resetIMU(uint8_t const  * const buffer, const uint8_t len){
     IMU.reset();
+}
+
+void goalPos(uint8_t const * const buffer, const uint8_t len){
+    int gx = 0;
+    int gy = 0;
+    int processed = sscanf((const char*)(buffer+1), "%d %d", &gx, &gy);
+
+    if(gx == 0 && gy == 0){
+        pros::lcd::print(7, "No goal");
+        updateMotorGroup(leftDrive, 0);
+        updateMotorGroup(rightDrive, 0);
+        return;
+    }else{
+        pros::lcd::print(7, "Goal target: %d %d", gx, gy);
+    }
+
+    if(gx < 80){
+        //turn left
+        updateMotorGroup(leftDrive, -ROTATION_INTENSITY);
+        updateMotorGroup(rightDrive, ROTATION_INTENSITY);
+    }
+    else if(gx > 120){
+        //turn right
+        updateMotorGroup(leftDrive, ROTATION_INTENSITY);
+        updateMotorGroup(rightDrive, -ROTATION_INTENSITY);
+    }else{
+        updateMotorGroup(leftDrive, 0);
+        updateMotorGroup(rightDrive, 0);
+    }
 }

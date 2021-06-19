@@ -17,6 +17,7 @@ enum class COMMAND_ENUM {
     START_MAX_ROTATION_RIGHT = 18,
     READ_IMU = 32,
     RESET_IMU = 33,
+    GOAL_POS = 64,
 };
 
 extern pros::Imu IMU;
@@ -49,5 +50,7 @@ void startRotation(uint8_t const  * const buffer, const uint8_t len, const bool 
 void readIMU(uint8_t const  * const buffer, const uint8_t len);
 
 void resetIMU(uint8_t const  * const buffer, const uint8_t len);
+
+void goalPos(uint8_t const * const buffer, const uint8_t len);
 
 #endif
