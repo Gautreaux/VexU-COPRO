@@ -5,6 +5,8 @@ import math
 import time
 import itertools
 
+from numpy.core.fromnumeric import resize
+
 SHOW_NO_BLOCK = 1
 SHOW_BLOCK = 2
 
@@ -501,11 +503,11 @@ def hsvTesting(frame, video=None):
                         rightLines.append(line)
                     else:
                         leftLines.append(line)
-            
+
             for l_line in leftLines:
                 for r_line in rightLines:
                     # calculate intersection
-                    # small chance for a problem here if 
+                    # small chance for a problem here if
                     #   one line r = -pi/2 and other f = pi/2
                     #       (parallel lines w/ opposite slopes)
                     #       note, this does not apply to a general
@@ -654,14 +656,144 @@ def hsvTesting2(frame):
         if cv.waitKey(10) & 0xFF == ord('q'):
             break
 
+def hsvTesting3(frame, video = None):
+    frames_to_show = []
+    frame_annotated = frame.copy()
+
+    frame_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+
+    frame_blur = cv.GaussianBlur(frame_gray, (3,3), 0)
+    frame_canny = cv.Canny(frame_blur, 20, 100)
+
+    template = cv.imread('vexuGoal_mask5.jpg', 0)
+
+    template_canny = cv.Canny(cv.GaussianBlur(template, (5,5), 0), 5, 50)
+
+    template_h, template_w = template.shape
+
+    # rectangles the template matched
+    template_rect = []
+
+    def scaleGenerator(step: int = .05):
+        assert(step > 0)
+        i = 1.0
+        while i > 0:
+            yield i
+            i -= step
+
+    # TODO - is a pyramid scale more appropriate (cv.pyrUp)
+    def getScaledImage(frame_s, scale):
+        assert(scale > 0)
+        assert(scale <= 1)
+        if scale == 1:
+            return frame_s
+        targetDims = (
+            int(frame_s.shape[1] * scale),
+            int(frame_s.shape[0] * scale)
+        )
+        return cv.resize(frame_s, targetDims)
+
+    for scale in scaleGenerator():
+        frame_gray_scaled = getScaledImage(frame_gray, scale)
+        scaled_w, scaled_h = frame_gray_scaled.shape
+
+        if scaled_w < template_w or scaled_h < template_h:
+            # image has been down scaled too small
+            break
+
+        scaled_edge = cv.Canny(cv.GaussianBlur(frame_gray_scaled, (3,3), 0), 50, 150)
+        res = cv.matchTemplate(scaled_edge, template_canny, cv.TM_CCOEFF_NORMED)
+
+        threshold = .60
+        loc = np.where(res >= threshold)
+        for pt in zip(*loc[::-1]):
+            # print(f"Found template match at pt {pt} scale {scale}")
+            template_rect.append(((int(pt[0]/scale), int(pt[1]/scale)), (int((pt[0] + template_h)/scale), int((pt[1] + template_w)/scale))))
+
+    # print("Rectangles:")
+    # print(template_rect)
+
+    for rect in template_rect:
+        cv.rectangle(frame_annotated, rect[0], rect[1], (0,64,64), 2)
+
+    # f_green = cv.inRange(cv.cvtColor(frame, cv.COLOR_BGR2HSV), np.array([20, 50, 50]), np.array([100, 255, 255]))
+    # f_green = cv.cvtColor(f_green, cv.COLOR_GRAY2BGR)
+    # for rect in template_rect:
+    #     cv.rectangle(f_green, rect[0], rect[1], (0,0,255), 3)
+
+
+    if template_rect:
+        # now try to determine the partions on the rectangles:
+        # rect_centers = []
+        # for up_left, low_right in template_rect:
+        #     rect_centers.append(
+        #         (((low_right[0] - up_left[0]) / 2),
+        #         ((low_right[1] - up_left[1]) / 2))
+        #     )
+
+        template_rect.sort(key = lambda x : ((x[0][0] + x[1][0]) / 2))
+        groups = []
+        maxX = -1
+
+        for up_left, low_right in template_rect:
+            x = (up_left[0] + low_right[0]) / 2
+            y = (up_left[1] + low_right[1]) / 2
+            if x > maxX:
+                groups.append([])
+            groups[-1].append((x, y))
+            maxX = max(maxX, low_right[0])
+
+        print(f"Resolved {len(groups)} groups")
+
+        for group in groups:
+            sum_x = 0
+            sum_y = 0
+
+            for x, y in group:
+                sum_x += x
+                sum_y += y
+
+            x_c = int(sum_x / len(group))
+            y_c = int(sum_y / len(group))
+
+            cv.circle(frame_annotated, (x_c, y_c), 15, (0, 0, 255), -1)
+
+
+    
+    # extract clustering of points
+
+
+
+
+
+    frames_to_show.append(("original", frame))
+    frames_to_show.append(("annotated", frame_annotated))
+    # frames_to_show.append(("gray", frame))
+    # frames_to_show.append(("template_canny", template_canny))
+    # frames_to_show.append(("canny", frame_canny))
+    # frames_to_show.append(("green", f_green))
+
+    if video:
+        video.write(frame_annotated)
+    else:
+        for title, frame in frames_to_show:
+            cv.namedWindow(title, cv.WINDOW_NORMAL)
+            cv.imshow(title, frame)
+
+        # while True:
+        #     if cv.waitKey(10) & 0xFF == ord('q'):
+        #         break
+        # print("-------------------------------------------")
+
 def cv_main():
     print("CV_MAIN")
     # recordVideo()
 
-    # f = cv.imread('dev/vexuGoalBad.jpg', cv.IMREAD_UNCHANGED)
+    # f = cv.imread('dev/vexuGoal.jpg', cv.IMREAD_UNCHANGED)
     # imageHSVSliders(f)
     # f_in = cv.cvtColor(f, cv.COLOR_BGR2GRAY)
     # hsvTesting(f)
+    # hsvTesting3(f)
     # exit(0)
     # resolveVexGoalByGreen(f, show=SHOW_BLOCK)
     # # resolveVexGoalByChevrons(f_in, show=SHOW_BLOCK)
@@ -669,11 +801,15 @@ def cv_main():
     # exit(0)
 
     # from camera
-    # capture = cv.VideoCapture(0)
+    capture = cv.VideoCapture(1)
 
     # from file
     # capture = cv.VideoCapture("dev/out_vid.avi")
-    capture = cv.VideoCapture("dev/swirlTestVid (12).mp4")
+    # capture = cv.VideoCapture("dev/swirlTestVid12.mp4")
+
+    # r,f = capture.read()
+    # cv.imwrite("frame.jpg", f)
+    # exit(0)
 
     if not capture.isOpened():
         print("Camera could not be opened")
@@ -696,11 +832,11 @@ def cv_main():
         # resolveVexGoalByChevrons(f_in, show=SHOW_NO_BLOCK)
         # resolveVexGoalByGreen(f, show=SHOW_NO_BLOCK)
         # resolveVexGoalByVex(f_in, show=SHOW_NO_BLOCK)
-        hsvTesting(f, out)
+        hsvTesting3(f)
         if cv.waitKey(1) & 0xFF == ord('q'):
             break
 
-        time.sleep(.05)
+        # time.sleep(.05)
 
 if __name__ == "__main__":
     cv_main()
