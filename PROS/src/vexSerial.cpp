@@ -86,7 +86,7 @@ void VexSerial::VexSerialSender(void* params){
     uint8_t formatBuffer[MAX_MESSAGE_LEN];
 
     pros::delay(1000);
-    pros::lcd::print(2, "Sender Started");
+    pros::lcd::print(LCD_SENDER_STATUS, "Sender Started");
     
     while(vsq.Running){
         PendingMessage* thisMessage;
@@ -116,7 +116,7 @@ void VexSerial::VexSerialReceiver(void* params){
     uint8_t formatBuffer[MAX_MESSAGE_LEN];
 
     pros::delay(1000);
-    pros::lcd::print(3, "Receiver Started");
+    pros::lcd::print(LCD_RECEIVER_STATUS, "Receiver Started");
 
     while(vsq.Running){
 

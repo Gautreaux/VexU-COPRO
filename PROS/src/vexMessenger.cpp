@@ -85,7 +85,7 @@ void VexMessenger::handle_control(VexMessenger::Message * const msg){
             //TODO - probably want to do something here w.r.t processing but whatever
             break;
         default:
-            pros::lcd::print(6, "handle_control illegal control: %d", msg->header.msgType);
+            pros::lcd::print(LCD_OPEN_6, "handle_control illegal control: %d", msg->header.msgType);
             throw msg->header.msgType;
     }
 }

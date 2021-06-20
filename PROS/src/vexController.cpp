@@ -42,7 +42,7 @@ void processMessage(uint8_t const  * const buffer, const uint8_t len){
         goalPos(buffer, len);
         return;
     default:
-        pros::lcd::print(7, "Illegal Command: 0x%X (%d)", buffer[0], buffer[0]);
+        pros::lcd::print(LCD_OPEN_7, "Illegal Command: 0x%X (%d)", buffer[0], buffer[0]);
         return;
     }
 }
@@ -52,7 +52,7 @@ void stop(uint8_t const  * const buffer, const uint8_t len){
 }
 
 void text(uint8_t const  * const buffer, const uint8_t len){
-    pros::lcd::print(7, "%s", buffer+1);
+    pros::lcd::print(LCD_OPEN_7, "%s", buffer+1);
 }
 
 void jitter(uint8_t const  * const buffer, const uint8_t len){
