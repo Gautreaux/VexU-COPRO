@@ -5,15 +5,13 @@
 #include "config.h"
 #include <vector>
 
-// enable flag for extreme low power operation
-#define LOW_POWER_MODE
-
 using Motorgroup = std::vector<pros::Motor>;
 
 extern Motorgroup leftDrive;
 extern Motorgroup rightDrive;
 extern Motorgroup intake;
 extern Motorgroup rollers;
+extern Motorgroup topRollers;
 
 //set all motors in the motor group to the specified voltage
 void updateMotorGroup(const Motorgroup& mg, const int32_t voltage);
@@ -21,6 +19,10 @@ void updateMotorGroup(const Motorgroup& mg, const int32_t voltage);
 // basically just a tank drive wrapper
 void updateDrive(int32_t leftY, int32_t rightY);
 
+// convert arcade inputs into tank inputs
+void arcadeDrive(int32_t x, int32_t y);
+
 void stopAll(void);
+
 
 #endif
