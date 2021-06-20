@@ -11,7 +11,7 @@
 #define LCD_SENDER_STATUS 2
 #define LCD_RECEIVER_STATUS 3
 #define LCD_LOCAL_STATUS 4
-#define LCD_OPEN_5 5
+#define LCD_AUTO_SCORE_STATUS 5
 #define LCD_OPEN_6 6
 #define LCD_OPEN_7 7
 

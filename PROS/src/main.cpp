@@ -12,6 +12,59 @@
  */
 pros::Imu IMU(IMU_PORT);
 
+#define CV_DEADZONE 20
+#define CV_X_TARGET 270
+#define CV_H_TARGET 25
+
+//move power between 1 and 127 (inclusive)
+#define CV_MOVE_POWER 25
+
+int goalConst[4];
+
+//TODO - probably refactor
+// auto score on the goal
+void autoScore(void){
+	int targetX = goalConst[0];
+	int targetY = goalConst[1];
+	int targetW = goalConst[2];
+	int targetH = goalConst[3];
+
+	if(targetX == 0 && targetY == 0){
+		// no goal
+		//	halt and try to resolve
+		updateMotorGroup(leftDrive, 0);
+		updateMotorGroup(rightDrive, 0);
+
+		//ALSO, make sure the camera isnt blocked
+		updateMotorGroup(topRollers, -32);
+		pros::lcd::print(LCD_AUTO_SCORE_STATUS, "SEARCHING");
+		return;
+	}
+
+	if(targetX < (CV_X_TARGET - CV_DEADZONE)){
+		//turn left
+		updateMotorGroup(leftDrive, -CV_MOVE_POWER);
+		updateMotorGroup(rightDrive, CV_MOVE_POWER);
+		pros::lcd::print(LCD_AUTO_SCORE_STATUS, "TURN LEFT");
+	}else if(targetX > (CV_X_TARGET + CV_DEADZONE)){
+		//turn right
+		updateMotorGroup(leftDrive, CV_MOVE_POWER);
+		updateMotorGroup(rightDrive, -CV_MOVE_POWER);
+		pros::lcd::print(LCD_AUTO_SCORE_STATUS, "TURN RIGHT");
+	}else if(targetH > CV_H_TARGET){
+		//we know we are aligned, but too far back
+		//	so drive forward
+		updateMotorGroup(leftDrive, CV_MOVE_POWER);
+		updateMotorGroup(rightDrive, CV_MOVE_POWER);
+		pros::lcd::print(LCD_AUTO_SCORE_STATUS, "FORWARD");
+	}else{
+		//we are in position
+		updateMotorGroup(topRollers, MAX_ROTATION_INTENSITY);
+		updateMotorGroup(rollers, MAX_ROTATION_INTENSITY);
+		pros::lcd::print(LCD_AUTO_SCORE_STATUS, "SCORE");
+	}
+}
+
 void initialize() {
 	pros::lcd::initialize();
 
@@ -156,7 +209,7 @@ void opcontrol() {
 			//used to keep this loop from being greedy and blocking
 			int msgCounter = 4;
 			while(msgCounter-- && VexMessenger::v_messenger->readDataMessage(messageBuffer, messageLen, 0)){
-				pros::lcd::print(LCD_OPEN_5, "MESSAGE PROCESSING CURRENTLY DISABLED");
+				processMessage(messageBuffer, messageLen);
 			}
 		}
 
@@ -164,15 +217,32 @@ void opcontrol() {
 
 		// joystick based control
 		if(master.is_connected()){
+			// set to true when autoscoring to prevent unintentional interference
+			bool triedAuto = false;
+			if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_X)){
+				pros::lcd::print(LCD_AUTO_SCORE_STATUS, "--clr--");
+			}
+
+			if(master.get_digital(pros::E_CONTROLLER_DIGITAL_X)){
+				triedAuto = true;
+				autoScore();
+			}
+			
 			int32_t arcade_y = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
 			int32_t arcade_x = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
-			arcadeDrive(arcade_x, arcade_y);
+			if(triedAuto){
+				if ((arcade_y > CONTROLLER_THRESHOLD) || (arcade_x > CONTROLLER_THRESHOLD)){
+					arcadeDrive(arcade_x, arcade_y);
+				}
+			}else{
+				arcadeDrive(arcade_x, arcade_y);
+			}
 
 			if(master.get_digital(pros::E_CONTROLLER_DIGITAL_R1)){
 				updateMotorGroup(intake, MAX_ROTATION_INTENSITY);
 			}else if(master.get_digital(pros::E_CONTROLLER_DIGITAL_L1)){
 				updateMotorGroup(intake, -MAX_ROTATION_INTENSITY);
-			}else{
+			}else if(!triedAuto){
 				updateMotorGroup(intake, 0);
 			}
 
@@ -180,7 +250,7 @@ void opcontrol() {
 				updateMotorGroup(rollers, MAX_ROTATION_INTENSITY);
 			}else if(master.get_digital(pros::E_CONTROLLER_DIGITAL_L2)){
 				updateMotorGroup(rollers, -MAX_ROTATION_INTENSITY);
-			}else{
+			}else if(!triedAuto){
 				updateMotorGroup(rollers, 0);
 			}
 
@@ -188,7 +258,7 @@ void opcontrol() {
 				updateMotorGroup(topRollers, MAX_ROTATION_INTENSITY);
 			}else if(master.get_digital(pros::E_CONTROLLER_DIGITAL_Y)){
 				updateMotorGroup(topRollers, -MAX_ROTATION_INTENSITY);
-			}else{
+			}else if(!triedAuto){
 				updateMotorGroup(topRollers, 0);
 			}
 		}
@@ -197,121 +267,4 @@ void opcontrol() {
 		pros::lcd::print(LCD_LOCAL_STATUS, "Loop %d checkpoint Z", loop_counter);
 		pros::delay(50);
 	}
-
-// 	uint8_t nextLine = 4;
-// 	uint8_t msgLen;
-// 	uint8_t recvBuffer[MAX_MESSAGE_LEN];
-
-// 	// used for turning controller on and off
-// 	bool controllerOn = false;
-
-// 	// used for making the on off more reliable
-// 	//	forces a realease before toggling again
-// 	bool lastPress = false;
-
-// 	char upmsg[]    = "up-pressed";
-// 	char leftmsg[]  = "left-pressed";
-// 	char rightmsg[] = "right-pressed";
-// 	char downmsg[]  = "down-pressed";
-
-// 	master.print(0, 0, "%s", "CTRL DISABLED");
-
-// 	pros::lcd::print(1, "VEX_Messenger ---");
-// #ifdef LOW_POWER_MODE
-// 		pros::lcd::print(0, "LOW POWER MODE");
-// 		master.print(1, 0, "%s", "LOW POWER MODE");
-// #else
-// 		pros::lcd::print(0,"Normal Operation");
-// #endif
-
-// 	while (true) {
-// 		// if(VexSerial::v_ser->receiveMessageIfAvailable(recvBuffer, msgLen))
-// 		// {
-// 		// 	pros::lcd::print(
-// 		// 		nextLine, "(%03d) %02X %02X %02X %02X  %02X %02X %02X %02X",
-// 		// 		msgLen, 
-// 		// 		recvBuffer[0], recvBuffer[1],
-// 		// 		recvBuffer[2], recvBuffer[3],
-// 		// 		recvBuffer[4], recvBuffer[5],
-// 		// 		recvBuffer[6], recvBuffer[7]
-// 		// 	);
-
-// 		// 	nextLine = (nextLine + 1); // fast mod8
-// 		// 	if(nextLine >= 8){
-// 		// 		nextLine = 4;
-// 		// 	}
-
-// 		// 	VexSerial::v_ser->sendMessage(recvBuffer, msgLen);
-// 		// }else{
-// 		// 	pros::lcd::print(0, "VSER_false");
-// 		// }
-
-// 		// pros::delay(20);
-
-// 		if(VexMessenger::v_messenger->isConnected()){
-// 			pros::lcd::print(1, "VEX_Messenger Connected!");
-
-// 			if(VexMessenger::v_messenger->readDataMessage(recvBuffer, msgLen, 50)){
-// 				recvBuffer[msgLen] = 0; //add null terminator
-// 				pros::lcd::print(6, "%d: %02X %02X %02X %02X  %02X %02X %02X %02X", msgLen, recvBuffer[0], recvBuffer[1], recvBuffer[2], recvBuffer[3], recvBuffer[4], recvBuffer[5], recvBuffer[6], recvBuffer[7]);
-// 				processMessage(recvBuffer, msgLen);
-// 			}
-// 		}
-// 		else{
-// 			pros::lcd::print(1, "VEX_Messenger %s",
-// 				((VexMessenger::v_messenger->try_connect(200)) ? ("Connection Success!") : ("Connection Failed."))
-// 			);
-// 		}
-
-// 		if(master.is_connected()){
-// 			if(master.get_digital(pros::E_CONTROLLER_DIGITAL_UP)){
-// 				VexMessenger::v_messenger->sendMessage((const uint8_t*)(upmsg), strlen(upmsg));
-// 			}
-// 			if(master.get_digital(pros::E_CONTROLLER_DIGITAL_LEFT)){
-// 				VexMessenger::v_messenger->sendMessage((const uint8_t*)(leftmsg), strlen(leftmsg));
-// 			}
-// 			if(master.get_digital(pros::E_CONTROLLER_DIGITAL_RIGHT)){
-// 				VexMessenger::v_messenger->sendMessage((const uint8_t*)(rightmsg), strlen(rightmsg));
-// 			}
-// 			if(master.get_digital(pros::E_CONTROLLER_DIGITAL_DOWN)){
-// 				VexMessenger::v_messenger->sendMessage((const uint8_t*)(downmsg), strlen(downmsg));
-// 			}
-
-// 			if(!lastPress && master.get_digital(pros::E_CONTROLLER_DIGITAL_X)){
-// 				controllerOn = !controllerOn;
-// 				master.print(0, 0, "%s", (controllerOn ? "CTRL ENABLED " : "CTRL DISABLED"));
-// 				lastPress = true;
-// 			}else if(lastPress && !master.get_digital(pros::E_CONTROLLER_DIGITAL_X)){
-// 				lastPress = false;
-// 			}
-
-// 			pros::lcd::print(4, "Controller Connected: %s", (controllerOn ? "ON" : "OFF"));
-
-// 			if(controllerOn){
-// 				int32_t leftY = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
-// 				int32_t rightY = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y);
-// 				updateDrive(leftY, rightY);
-
-// 				if(master.get_digital(pros::E_CONTROLLER_DIGITAL_R2)){
-// 					updateMotorGroup(intake, 127);
-// 				}else if(master.get_digital(pros::E_CONTROLLER_DIGITAL_R1)){
-// 					updateMotorGroup(intake, -127);
-// 				}else{
-// 					updateMotorGroup(intake, 0);
-// 				}
-
-// 				if(master.get_digital(pros::E_CONTROLLER_DIGITAL_L2)){
-// 					updateMotorGroup(rollers, 127);
-// 				}else if(master.get_digital(pros::E_CONTROLLER_DIGITAL_L1)){
-// 					updateMotorGroup(rollers, -127);
-// 				}else{
-// 					updateMotorGroup(rollers, 0);
-// 				}
-// 			}
-// 		}else{
-// 			pros::lcd::print(4, "Controller Disconnected");
-// 		}
-
-// 		pros::lcd::print(5, "IMU reading: %f", -IMU.get_rotation());
-// 	}
 }

@@ -89,21 +89,37 @@ def getBestGoalPosition(frame, show_annotated : bool = False):
         sum_x += x
         sum_y += y
 
+    c_x = int(sum_x / len(biggest_group))
+    c_y = int(sum_y / len(biggest_group))
+
+    # draw the template matches
     if show_annotated:
+        for up_left, low_right in template_rectangles:
+            cv.rectangle(annotated, up_left, low_right, (0,30, 128), thickness=2)
+            
 
-        c_x = int(sum_x / len(biggest_group))
-        c_y = int(sum_y / len(biggest_group))
+    # try and resolve distance
+    largest_rect = max(template_rectangles, key=(lambda x : x[1][0] - x[0][0]))
 
-        annotated = frame.copy()
+    frame_hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
+    frame_blurry_af = cv.GaussianBlur(frame_hsv, (15,15), 0)
+    ff_mask = np.zeros((frame_blurry_af.shape[0] + 2, frame_blurry_af.shape[1] + 2, 1), np.uint8)
+    some_int, colored, mask, bounding  = cv.floodFill(frame_hsv, ff_mask, (c_x, c_y + 20), (0,0, 255), loDiff=(25,50,50), upDiff=(25,50,50), flags=(4 | cv.FLOODFILL_FIXED_RANGE))
+
+    x0, y0, w, h = bounding
+    
+    if show_annotated:
+        cv.rectangle(annotated, (x0, y0), (x0 + w, y0 + h), (0, 255, 0), 2)
         cv.circle(annotated, (c_x, c_y), 15, (0, 0, 255), thickness=-1)
         cv.namedWindow("annotated", cv.WINDOW_NORMAL)
         cv.imshow("annotated", annotated)
         cv.waitKey(10)
 
-    return (
-        int(sum_x / len(biggest_group)),
-        int(sum_y / len(biggest_group))
-    )
+    if w < 5 or h < 5:
+        w = 0
+        h = 0
+
+    return (c_x, c_y, w, h)
 
 
 def cvStep():
@@ -118,5 +134,4 @@ def cvStep():
         vexAction.VEX_sendGoalTarget(group_center)
         print(group_center)
     else:
-        vexAction.VEX_sendGoalTarget((0,0))
-    pass
+        vexAction.VEX_sendGoalTarget((0,0,0,0))

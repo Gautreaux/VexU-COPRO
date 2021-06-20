@@ -22,6 +22,8 @@ enum class COMMAND_ENUM {
 
 extern pros::Imu IMU;
 
+extern int goalConst[];
+
 // how fast should start/stop rotation run
 //  something in range 0-127
 //      but you know, dont do 0, it wont do anything

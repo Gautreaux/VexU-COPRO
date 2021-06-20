@@ -82,30 +82,7 @@ void resetIMU(uint8_t const  * const buffer, const uint8_t len){
 }
 
 void goalPos(uint8_t const * const buffer, const uint8_t len){
-    int gx = 0;
-    int gy = 0;
-    int processed = sscanf((const char*)(buffer+1), "%d %d", &gx, &gy);
-
-    if(gx == 0 && gy == 0){
-        pros::lcd::print(7, "No goal");
-        updateMotorGroup(leftDrive, 0);
-        updateMotorGroup(rightDrive, 0);
-        return;
-    }else{
-        pros::lcd::print(7, "Goal target: %d %d", gx, gy);
-    }
-
-    if(gx < 80){
-        //turn left
-        updateMotorGroup(leftDrive, -ROTATION_INTENSITY);
-        updateMotorGroup(rightDrive, ROTATION_INTENSITY);
-    }
-    else if(gx > 120){
-        //turn right
-        updateMotorGroup(leftDrive, ROTATION_INTENSITY);
-        updateMotorGroup(rightDrive, -ROTATION_INTENSITY);
-    }else{
-        updateMotorGroup(leftDrive, 0);
-        updateMotorGroup(rightDrive, 0);
-    }
+    int32_t processed = sscanf((const char*)(buffer+1), "%d %d %d %d", goalConst, goalConst + 1, goalConst + 2, goalConst + 3);
+    pros::lcd::print(LCD_OPEN_6, "VALS: %d %d %d %d", goalConst[0], goalConst[1], goalConst[2], goalConst[3]);
+    return;
 }
