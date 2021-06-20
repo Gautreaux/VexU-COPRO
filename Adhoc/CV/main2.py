@@ -12,6 +12,7 @@ import numpy as np
 # print(f"CWD: {os.getcwd()}")
 
 FRAMES_TO_SKIP = 420
+FRAMES_TO_SKIP = 60
 
 vexCV.cvSetup((os.path.abspath(__file__).rpartition('\\')[0] + "/dev/15.1.avi", False), FRAMES_TO_SKIP)
 

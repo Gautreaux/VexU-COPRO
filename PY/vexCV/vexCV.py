@@ -1,5 +1,6 @@
 import cv2 as cv
 import numpy as np
+from enum import Enum, unique
 from . import cv_template, cv_template_h, cv_template_w, cv_capture
 try:
     from ..vexController import vexAction
@@ -20,6 +21,16 @@ CONSENSUS_THRESHOLD = 5
 
 # what % of image should be same black to indicate blocked image
 BLOCKED_CAM_THRESHOLD = 0.3
+
+# how many frames can miss before no-goal established
+MAX_NON_FRAME = 5
+
+# store info about the filter
+filter_datastore = [0]*16
+
+#enums to make things easier
+FILTER_LAST_RETURNED = 0
+FILTER_LAST_TTL = 1
 
 # show an image and block
 #   do not put into a non-debug loop
@@ -226,15 +237,30 @@ def isCameraBlocked(frame_gray) -> bool:
 
 # manages the filtering of goal, hiding drops, ect.
 def goalFilter(pre_filter):
+    global filter_datastore
+
     if pre_filter:
         # some goal was resolved
         #   is this consistent with previous guess?
+        #       we dont check this
+
+        filter_datastore[FILTER_LAST_RETURNED] = pre_filter
+        filter_datastore[FILTER_LAST_TTL] = MAX_NON_FRAME
+
         return pre_filter
     else:
         # no goal was detected
         # TODO - logic about allowing some period of misses before 
         # what about switching to another resolver if we are close to a goal
         #   returning a no goal
+
+        if filter_datastore[FILTER_LAST_TTL]:
+            filter_datastore[FILTER_LAST_TTL] -= 1
+
+            # return nothing
+            return None
+
+        # return that no goal could be resolved
         return (0,0,0,0)
 
 def cvSetup(camera_path, frames_to_skip = 0):
@@ -272,9 +298,15 @@ def cvStep(show_annotated : bool = False):
 
         filtered = goalFilter(group_center)
         print(f"{group_center} --> {filtered}")
-        vexAction.VEX_sendGoalTarget(filtered)
+        if filtered:
+            vexAction.VEX_sendGoalTarget(filtered)
     finally:
         if show_annotated:
+            if filter_datastore[FILTER_LAST_TTL] != MAX_NON_FRAME and filter_datastore[FILTER_LAST_RETURNED]:
+                # draw the circle, but stale
+                cv.circle(frame_to_annotate, filter_datastore[FILTER_LAST_RETURNED][:2], 15, (0,0,255), -1)
+                cv.circle(frame_to_annotate, filter_datastore[FILTER_LAST_RETURNED][:2], 12, (255 * filter_datastore[FILTER_LAST_TTL] / (MAX_NON_FRAME),0,0), -1)
+
             cv.namedWindow("annotated", cv.WINDOW_NORMAL)
             cv.imshow("annotated", frame_to_annotate)
             cv.waitKey(1)
