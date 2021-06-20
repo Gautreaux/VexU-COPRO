@@ -30,7 +30,7 @@ def openVideoCapture():
     capture.release()
 
 def recordVideo():
-    capture = cv.VideoCapture(0)
+    capture = cv.VideoCapture(1, cv.CAP_DSHOW)
     out = cv.VideoWriter(f'out_vid.{round(time.time())}.avi', cv.VideoWriter_fourcc('M', 'J', 'P', 'G'), 10, (int(capture.get(3)), int(capture.get(4))))
 
     while True:
@@ -774,10 +774,10 @@ def hsvTesting3(frame, video = None):
             cv.namedWindow(title, cv.WINDOW_NORMAL)
             cv.imshow(title, frame)
 
-        # while True:
-        #     if cv.waitKey(10) & 0xFF == ord('q'):
-        #         break
-        # print("-------------------------------------------")
+        while True:
+            if cv.waitKey(10) & 0xFF == ord('q'):
+                break
+        print("-------------------------------------------")
 
 def cv_main():
     print("CV_MAIN")
@@ -795,11 +795,12 @@ def cv_main():
     # exit(0)
 
     # from camera
-    capture = cv.VideoCapture(1, cv.CAP_DSHOW)
+    # capture = cv.VideoCapture(1, cv.CAP_DSHOW)
 
     # from file
     # capture = cv.VideoCapture("dev/out_vid.avi")
     # capture = cv.VideoCapture("dev/swirlTestVid12.mp4")
+    capture = cv.VideoCapture("dev/15.1.avi")
 
     # r,f = capture.read()
     # cv.imwrite("frame.jpg", f)

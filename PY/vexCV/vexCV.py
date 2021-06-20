@@ -1,7 +1,36 @@
 import cv2 as cv
 import numpy as np
 from . import cv_template, cv_template_h, cv_template_w, cv_capture
-from ..vexController import vexAction
+try:
+    from ..vexController import vexAction
+except ImportError:
+    print("Error importing vex action.")
+    print("  If you are running adhoc this is expected.")
+    print("  If not, this is a problem.")
+
+    # create a proxy for vexAction
+    class vexAction:
+        @classmethod
+        def VEX_sendGoalTarget(_, target):
+            print(f"Proxy send: {target}")
+            pass
+
+# how many goal guess points are needed for a consensus
+CONSENSUS_THRESHOLD = 5
+
+# what % of image should be same black to indicate blocked image
+BLOCKED_CAM_THRESHOLD = 0.3
+
+# show an image and block
+#   do not put into a non-debug loop
+def showImageBlock(images):
+    for name, frame in images:
+        cv.namedWindow(name, cv.WINDOW_NORMAL)
+        cv.imshow(name, frame)
+
+    while True:
+        if cv.waitKey(10) & 0xFF == ord('q'):
+            break
 
 def scaleGenerator(step: int = .05):
     assert(step > 0)
@@ -21,20 +50,57 @@ def getScaledImage(frame, scale):
     )
     return cv.resize(frame, targetDims)
 
-def connectCamera():
+def connectCamera(camera_details):
     global cv_capture
     if cv_capture is not None:
         return
     
     print("Starting video connection")
-    cv_capture = cv.VideoCapture(1, cv.CAP_DSHOW)
+    if camera_details[1]:
+        cv_capture = cv.VideoCapture(camera_details[0], cv.CAP_DSHOW)
+    else:
+        cv_capture = cv.VideoCapture(camera_details[0])
     print("Camera Connected")
 
-# get and return the best guess goal position
-def getBestGoalPosition(frame, show_annotated : bool = False):
-    if show_annotated:
-        annotated = frame.copy()
 
+# magic sharpening function
+def unsharp_mask(image, kernel_size=(5, 5), sigma=1.0, amount=1.0, threshold=0):
+    """Return a sharpened version of the image, using an unsharp mask."""
+    blurred = cv.GaussianBlur(image, kernel_size, sigma)
+    sharpened = float(amount + 1) * image - float(amount) * blurred
+    sharpened = np.maximum(sharpened, np.zeros(sharpened.shape))
+    sharpened = np.minimum(sharpened, 255 * np.ones(sharpened.shape))
+    sharpened = sharpened.round().astype(np.uint8)
+    if threshold > 0:
+        low_contrast_mask = np.absolute(image - blurred) < threshold
+        np.copyto(sharpened, image, where=low_contrast_mask)
+    return sharpened
+
+# yields the initial image, then generates sharpened variants of the image
+def sharpenGenerator(frame):
+    yield frame
+
+    # do a simple gaussian sharpen
+    f_g = cv.GaussianBlur(frame, (0,0), 3)
+    yield cv.addWeighted(frame, 1.5, f_g, -0.5, 0, f_g)
+
+    # do a very, very aggressive sharpen
+    yield unsharp_mask(frame, kernel_size=(11,11), amount=5)
+
+    # these sometimes resolve things, but mostly slow things down
+    #   they dont get things that the other 3 get
+
+    # do a simple kernel shapen
+    #   this generally, doesn't find things, but sometimes
+    # k = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
+    # yield cv.filter2D(frame, -1, k)
+
+    # yield unsharp_mask(frame)
+
+
+# get a list of possible goal positions in the image
+#   returns a list of rectangles in the image
+def getPossibleGoalPosition(frame):
     frame_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 
     # list of rectangles matching the template, scaled wrt the main image
@@ -59,15 +125,11 @@ def getBestGoalPosition(frame, show_annotated : bool = False):
             # print(f"Found template match at pt {pt} scale {scale}")
             template_rectangles.append(((int(pt[0]/scale), int(pt[1]/scale)), (int((pt[0] + cv_template_h)/scale), int((pt[1] + cv_template_w)/scale))))
 
-    if not template_rectangles:
-        # no matches found
-        if show_annotated:
-            cv.namedWindow("annotated", cv.WINDOW_NORMAL)
-            cv.imshow("annotated", annotated)
-            cv.waitKey(10)
+    return template_rectangles
 
-        return None
-    
+# partion the list template rectangles
+#   int a list of lists
+def partionGuesses(template_rectangles):
     template_rectangles.sort(key = lambda x : ((x[0][0] + x[1][0]) / 2))
     groups = []
     maxX = -1
@@ -79,9 +141,36 @@ def getBestGoalPosition(frame, show_annotated : bool = False):
             groups.append([])
         groups[-1].append((x, y))
         maxX = max(maxX, low_right[0])
+    
+    return groups
 
-    biggest_group = max(groups, key=len)
+# get and return the best guess goal position
+def getBestGoalPosition(frame, frame_to_annotate = None):
+    template_rectangles = []
+    biggest_group = []
 
+    for f in sharpenGenerator(frame):
+        new_rect = getPossibleGoalPosition(f)
+        if not new_rect:
+            # no new possibilities
+            continue
+        
+        template_rectangles.extend(new_rect)
+
+        groups = partionGuesses(template_rectangles)
+
+        biggest_group = max(groups, key=len)
+
+        if len(biggest_group) > CONSENSUS_THRESHOLD:
+            break
+
+    if not biggest_group:
+        # no matches found
+        if frame_to_annotate is not None:
+            pass
+
+        return None
+    
     sum_x = 0
     sum_y = 0
 
@@ -93,13 +182,13 @@ def getBestGoalPosition(frame, show_annotated : bool = False):
     c_y = int(sum_y / len(biggest_group))
 
     # draw the template matches
-    if show_annotated:
+    if frame_to_annotate is not None:
         for up_left, low_right in template_rectangles:
-            cv.rectangle(annotated, up_left, low_right, (0,30, 128), thickness=2)
+            cv.rectangle(frame_to_annotate, up_left, low_right, (0,30, 128), thickness=2)
             
 
     # try and resolve distance
-    largest_rect = max(template_rectangles, key=(lambda x : x[1][0] - x[0][0]))
+    #largest_rect = max(template_rectangles, key=(lambda x : x[1][0] - x[0][0]))
 
     frame_hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
     frame_blurry_af = cv.GaussianBlur(frame_hsv, (15,15), 0)
@@ -108,12 +197,9 @@ def getBestGoalPosition(frame, show_annotated : bool = False):
 
     x0, y0, w, h = bounding
     
-    if show_annotated:
-        cv.rectangle(annotated, (x0, y0), (x0 + w, y0 + h), (0, 255, 0), 2)
-        cv.circle(annotated, (c_x, c_y), 15, (0, 0, 255), thickness=-1)
-        cv.namedWindow("annotated", cv.WINDOW_NORMAL)
-        cv.imshow("annotated", annotated)
-        cv.waitKey(10)
+    if frame_to_annotate is not None:
+        cv.rectangle(frame_to_annotate, (x0, y0), (x0 + w, y0 + h), (0, 255, 0), 2)
+        cv.circle(frame_to_annotate, (c_x, c_y), 15, (0, 0, 255), thickness=-1)
 
     if w < 5 or h < 5:
         w = 0
@@ -121,17 +207,74 @@ def getBestGoalPosition(frame, show_annotated : bool = False):
 
     return (c_x, c_y, w, h)
 
+# NOT WORKING
+#   hough circles didnt work
+#   need some hsv thresholds
+def isBallInImage(frame_hsv) -> str:
+    return None
 
-def cvStep():
-    connectCamera()
+def isCameraBlocked(frame_gray) -> bool:
+    hist_array = cv.calcHist(frame_gray, [0], None, [8], [0,256])
+    s = sum(hist_array)
+
+    # width, height = frame_gray.shape
+    # pixels_total = width * height
+
+    discriminator = s * BLOCKED_CAM_THRESHOLD
+
+    return (hist_array[0] > discriminator)
+
+# manages the filtering of goal, hiding drops, ect.
+def goalFilter(pre_filter):
+    if pre_filter:
+        # some goal was resolved
+        #   is this consistent with previous guess?
+        return pre_filter
+    else:
+        # no goal was detected
+        # TODO - logic about allowing some period of misses before 
+        # what about switching to another resolver if we are close to a goal
+        #   returning a no goal
+        return (0,0,0,0)
+
+def cvSetup(camera_path, frames_to_skip = 0):
+    connectCamera(camera_path)
+
+    while frames_to_skip > 0:
+        r,f = cv_capture.read()
+        frames_to_skip -= 1
+
+def cvStep(show_annotated : bool = False):
     r, f = cv_capture.read()
 
-    if not r:
-        # no new frame
-        return
-    group_center = getBestGoalPosition(f, True)
-    if group_center:
-        vexAction.VEX_sendGoalTarget(group_center)
-        print(group_center)
+    if show_annotated:
+        frame_to_annotate = f.copy()
     else:
-        vexAction.VEX_sendGoalTarget((0,0,0,0))
+        frame_to_annotate = None
+
+    try:
+        if not r:
+            # no new frame
+            return
+        group_center = getBestGoalPosition(f, frame_to_annotate)
+
+        if group_center is None:
+            # f_hsv = cv.cvtColor(f, cv.COLOR_BGR2HSV)
+
+            # ball_color = isBallInImage(f_hsv)
+            # if ball_color:
+            #     print(f"Ball {ball_color} in image")
+            #     return
+            f_gray = cv.cvtColor(f, cv.COLOR_BGR2GRAY)
+            if isCameraBlocked(f_gray):
+                print("CAMERA BLOCKED")
+                return
+
+        filtered = goalFilter(group_center)
+        print(f"{group_center} --> {filtered}")
+        vexAction.VEX_sendGoalTarget(filtered)
+    finally:
+        if show_annotated:
+            cv.namedWindow("annotated", cv.WINDOW_NORMAL)
+            cv.imshow("annotated", frame_to_annotate)
+            cv.waitKey(1)

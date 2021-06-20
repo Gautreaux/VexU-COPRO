@@ -10,6 +10,8 @@ def main():
     print("Stating messenger connection...")
     v_messenger.connect()
 
+    vexCV.cvSetup((1, True))
+
     frame_counter = 0
     start_time = time.time()
 
