@@ -227,16 +227,17 @@ void opcontrol() {
 				triedAuto = true;
 				autoScore();
 			}
-			
+
+#ifdef DRIVER_AARON
 			int32_t arcade_y = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
 			int32_t arcade_x = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
-			if(triedAuto){
-				if ((arcade_y > CONTROLLER_THRESHOLD) || (arcade_x > CONTROLLER_THRESHOLD)){
-					arcadeDrive(arcade_x, arcade_y);
-				}
-			}else{
-				arcadeDrive(arcade_x, arcade_y);
-			}
+			arcadeDrive(arcade_x, arcade_y, !triedAuto);
+#endif
+#ifdef DRIVER_HUMZA
+			int32_t left_y = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
+			int32_t right_y = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y);
+			tankDrive(left_y, right_y, !triedAuto);
+#endif
 
 			if(master.get_digital(pros::E_CONTROLLER_DIGITAL_R1)){
 				updateMotorGroup(intake, MAX_ROTATION_INTENSITY);
@@ -250,6 +251,9 @@ void opcontrol() {
 				updateMotorGroup(rollers, MAX_ROTATION_INTENSITY);
 			}else if(master.get_digital(pros::E_CONTROLLER_DIGITAL_L2)){
 				updateMotorGroup(rollers, -MAX_ROTATION_INTENSITY);
+#ifdef DRIVER_HUMZA
+				updateMotorGroup(intake, -MAX_ROTATION_INTENSITY);
+#endif //DRIVER_HUMZA
 			}else if(!triedAuto){
 				updateMotorGroup(rollers, 0);
 			}

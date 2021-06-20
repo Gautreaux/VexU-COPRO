@@ -16,26 +16,17 @@ void updateMotorGroup(const Motorgroup& mg, const int32_t voltage){
     }
 }
 
-void updateDrive(int32_t leftY, int32_t rightY){
-    if(std::abs(leftY) < CONTROLLER_THRESHOLD){
-        leftY = 0;
-    }
-
-    if(std::abs(rightY) < CONTROLLER_THRESHOLD){
-        rightY = 0;
-    }
-
-    updateMotorGroup(leftDrive, leftY);
-    updateMotorGroup(rightDrive, rightY);
-}
-
-void arcadeDrive(int32_t x, int32_t y){
+void arcadeDrive(int32_t x, int32_t y, const bool force){
     if(std::abs(x) < CONTROLLER_THRESHOLD){
         x = 0;
     }
 
     if(std::abs(y) < CONTROLLER_THRESHOLD){
         y = 0;
+    }
+
+    if(!force && x == 0 && y == 0){
+        return;
     }
 
     if(y == 0){
@@ -52,6 +43,22 @@ void arcadeDrive(int32_t x, int32_t y){
     int32_t m = std::max(std::abs(tank_left), std::abs(tank_right));
 
     updateDrive(tank_left / m, tank_right / m);
+}
+
+void tankDrive(int32_t x, int32_t y, const bool force){
+    if(std::abs(x) < CONTROLLER_THRESHOLD){
+        x = 0;
+    }
+
+    if(std::abs(y) < CONTROLLER_THRESHOLD){
+        y = 0;
+    }
+
+    if(!force && x == 0 && y == 0){
+        return;
+    }
+
+    updateDrive(x,y);
 }
 
 void stopAll(void){

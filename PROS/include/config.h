@@ -24,6 +24,13 @@
 #define ROBOT_TARGET_24
 // #define ROBOT_TARGET_15
 
+
+// specify which driver is running this code
+#define DRIVER_AARON
+#define DRIVER_HUMZA
+// #define DRIVER_TRENT
+
+
 #ifdef ROBOT_TARGET_DEV
 
 #define FOUR_DRIVE_MOTORS
@@ -90,8 +97,17 @@
 #define MR_2_DIR true
 
 #define TOP_DIR false
+#endif // ROBOT_TARGET_24
 
-#endif //ROBOT_TARGET_24
+#ifdef DRIVER_AARON
+#endif // DRIVER_AARON
+
+#ifdef DRIVER_HUMZA
+#endif // DRIVER_HUMZA
+
+#ifdef DRIVER_TRENT
+#error "Trent has not configured his drive style."
+#endif // DRIVER_TRENT
 
 
 //safety checks to ensure that only one target is specified
@@ -121,5 +137,33 @@
 #endif
 #endif
 #endif
+
+// safety to check that only one driver is specified
+#ifdef DRIVER_AARON
+#ifdef DRIVER_HUMZA
+#error "Must specify only one driver"
+#endif // DRIVER_HUMZA
+#endif // DRIVER_AARON
+
+#ifdef DRIVER_TRENT
+#ifdef DRIVER_HUMZA
+#error "Must specify only one driver"
+#endif // DRIVER_HUMZA
+#endif // DRIVER_TRENT
+
+#ifdef DRIVER_AARON
+#ifdef DRIVER_TRENT
+#error "Must specify only one driver"
+#endif // DRIVER_TRENT
+#endif // DRIVER_AARON
+
+//safety check to ensure that at least one driver is specified
+#ifndef DRIVER_AARON
+#ifndef DRIVER_TRENT
+#ifndef DRIVER_HUMZA
+#error "Must specify at least one driver"
+#endif // DRIVER_HUMZA
+#endif // DRIVER_TRENT
+#endif // DRIVER_AARON
 
 #endif //__CONFIG__
