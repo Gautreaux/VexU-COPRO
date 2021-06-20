@@ -10,7 +10,7 @@ def main():
     print("Stating messenger connection...")
     v_messenger.connect()
 
-    vexCV.cvSetup((1, True))
+    vexCV.cvSetup((0, True))
 
     frame_counter = 0
     start_time = time.time()
@@ -21,7 +21,7 @@ def main():
     while True:
         # msg = input("Enter message: ")
         # vexAction.VEX_text(msg)
-        vexCV.cvStep()
+        vexCV.cvStep(True)
 
         frame_counter += 1
 

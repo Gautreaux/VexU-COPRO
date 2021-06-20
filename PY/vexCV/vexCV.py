@@ -259,8 +259,9 @@ def goalFilter(pre_filter):
         if filter_datastore[FILTER_LAST_TTL]:
             filter_datastore[FILTER_LAST_TTL] -= 1
 
-            # return nothing
-            return None
+            # return nothing (let old value linger)
+            #   this currently makes things worse
+            # return None
 
         # return that no goal could be resolved
         return (0,0,0,0)

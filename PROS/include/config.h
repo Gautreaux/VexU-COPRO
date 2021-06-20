@@ -20,9 +20,9 @@
 // #define LOW_POWER_MODE
 
 // specify which robot is being target with this build
-#define ROBOT_TARGET_DEV
+// #define ROBOT_TARGET_DEV
 // #define ROBOT_TARGET_24
-// #define ROBOT_TARGET_15
+#define ROBOT_TARGET_15
 
 
 // specify which driver is running this code
@@ -60,7 +60,38 @@
 #endif //ROBOT TARGET DEV
 
 #ifdef ROBOT_TARGET_15
-#error "15in robot on on single stream code"
+#define RIGHT_DRIVE_MOTOR_1_PORT 12
+#define RIGHT_DRIVE_MOTOR_2_PORT 14
+#define RIGHT_DRIVE_MOTOR_3_PORT 13
+
+#define LEFT_DRIVE_MOTOR_1_PORT 4
+#define LEFT_DRIVE_MOTOR_2_PORT 3
+#define LEFT_DRIVE_MOTOR_3_PORT 2
+
+#define LEFT_INTAKE_MOTOR_PORT 5
+#define RIGHT_INTAKE_MOTOR_PORT 15
+
+#define MIDDLE_ROLLER_MOTOR_1_PORT 17
+#define MIDDLE_ROLLER_MOTOR_2_PORT 18
+#define TOP_ROLLER_MOTOR_PORT 8
+
+#define IMU_PORT 20
+
+#define LM_1_DIR true
+#define LM_2_DIR true
+#define LM_3_DIR true
+
+#define RM_1_DIR false
+#define RM_2_DIR false
+#define RM_3_DIR false
+
+#define LI_DIR false
+#define RI_DIR true
+
+#define MR_1_DIR false
+#define MR_2_DIR false
+
+#define TOP_DIR false
 #endif //ROBOT_TARGET_15
 
 #ifdef ROBOT_TARGET_24
