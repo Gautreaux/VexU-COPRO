@@ -69,6 +69,8 @@ def connectCamera(camera_details):
     print("Starting video connection")
     if camera_details[1]:
         cv_capture = cv.VideoCapture(camera_details[0], cv.CAP_DSHOW)
+        print(cv_capture.get(cv.CAP_PROP_EXPOSURE))
+        cv_capture.set(cv.CAP_PROP_EXPOSURE, -4) 
     else:
         cv_capture = cv.VideoCapture(camera_details[0])
     print("Camera Connected")
@@ -302,7 +304,7 @@ def cvStep(show_annotated : bool = False):
             vexAction.VEX_sendGoalTarget(filtered)
     finally:
         if show_annotated:
-            if filter_datastore[FILTER_LAST_TTL] != MAX_NON_FRAME and filter_datastore[FILTER_LAST_RETURNED]:
+            if filter_datastore[FILTER_LAST_TTL] != MAX_NON_FRAME and filter_datastore[FILTER_LAST_TTL] and filter_datastore[FILTER_LAST_RETURNED]:
                 # draw the circle, but stale
                 cv.circle(frame_to_annotate, filter_datastore[FILTER_LAST_RETURNED][:2], 15, (0,0,255), -1)
                 cv.circle(frame_to_annotate, filter_datastore[FILTER_LAST_RETURNED][:2], 12, (255 * filter_datastore[FILTER_LAST_TTL] / (MAX_NON_FRAME),0,0), -1)
