@@ -6,6 +6,7 @@ import serial
 from time import sleep
 import queue
 
+from .SerialProxy import SerialProxy
 from .vexSerialUtil import (
     DeviceResolutionFailed, MessageTooLong,
     getVexComPort,
@@ -98,6 +99,7 @@ class VexSerial():
 
     def __init__(self) -> None:
         global _v_ser_serial_object
+        port = None
 
         retryCtr = 0
         while retryCtr < MAX_CONNECTION_RETRIES:
@@ -111,12 +113,15 @@ class VexSerial():
 
                 if(retryCtr >= MAX_CONNECTION_RETRIES):
                     print(f"Failed to resolve vex device after {retryCtr} attempts")
-                    raise e
+                    print(f"  Will use serial proxy")
+                    _v_ser_serial_object = SerialProxy()
+                    break
 
-        print(f"Resolved vex com port to: {port}")
-        _v_ser_serial_object = serial.Serial(port=port, baudrate=115200)
-        retryCtr = None
-        print("Successfully opened serial port...")
+        if port:
+            print(f"Resolved vex com port to: {port}")
+            _v_ser_serial_object = serial.Serial(port=port, baudrate=115200)
+            retryCtr = None
+            print("Successfully opened serial port...")
 
         self._sendThread = threading.Thread(target=_VexSerialSender, daemon=True)
         self._recvThread = threading.Thread(target=_VexSerialReceiver, daemon=True)
