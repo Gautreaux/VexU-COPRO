@@ -32,9 +32,9 @@
 
 
 // specify which robot is being target with this build
-// #define ROBOT_TARGET_DEV
+#define ROBOT_TARGET_DEV
 // #define ROBOT_TARGET_24
-#define ROBOT_TARGET_15
+// #define ROBOT_TARGET_15
 
 
 // specify which driver is running this code
@@ -66,6 +66,12 @@
 #define RM_2_DIR true
 #define RM_3_DIR true
 #define RM_4_DIR true
+
+#define LEFT_INTAKE_MOTOR_PORT 16
+#define RIGHT_INTAKE_MOTOR_PORT 17
+
+#define LI_DIR false
+#define RI_DIR true
 
 #define IMU_PORT 19
 

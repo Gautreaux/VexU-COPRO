@@ -26,6 +26,11 @@ pros::Imu IMU(IMU_PORT);
 #define CV_H_TARGET 110
 #endif //ROBOT_TARGET_15
 
+#ifdef ROBOT_TARGET_DEV
+#define CV_X_TARGET 0
+#define CV_H_TARGET 0
+#endif //ROBOT_TARGET_15
+
 //move power between 1 and 127 (inclusive)
 #define CV_MOVE_POWER 96
 
@@ -92,10 +97,10 @@ void initialize() {
 	rightDrive.emplace_back(RIGHT_DRIVE_MOTOR_4_PORT, RM_4_DIR);
 #endif //FOUR_DRIVE_MOTORS
 
-#ifndef ROBOT_TARGET_DEV
 	intake.emplace_back(LEFT_INTAKE_MOTOR_PORT, LI_DIR);
 	intake.emplace_back(RIGHT_INTAKE_MOTOR_PORT, RI_DIR);
 
+#ifndef ROBOT_TARGET_DEV
 	rollers.emplace_back(MIDDLE_ROLLER_MOTOR_1_PORT, MR_1_DIR);
 	rollers.emplace_back(MIDDLE_ROLLER_MOTOR_2_PORT, MR_2_DIR);
 
