@@ -38,5 +38,9 @@ void tankDrive(int32_t x, int32_t y, const bool force);
 
 void stopAll(void);
 
+inline void stopDrive(void){
+    updateMotorGroup(leftDrive, 0);
+    updateMotorGroup(rightDrive, 0);
+}
 
 #endif

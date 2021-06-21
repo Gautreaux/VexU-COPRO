@@ -64,4 +64,4 @@ def VEX_readIMU() -> float:
 
 def VEX_sendGoalTarget(goalPos : Tuple[int, int, int, int]) -> None:
     # print(f"Sending goal pos: {goalPos}")
-    buildSendCommand("goalPos", f"{goalPos[0]} {goalPos[1]} {goalPos[2]} {goalPos[3]}".encode("ascii"))
+    buildSendCommand("goalPos", f"{goalPos[0]} {goalPos[1]} {goalPos[2]} {goalPos[3]}!".encode("ascii"))

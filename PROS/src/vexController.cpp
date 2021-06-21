@@ -82,7 +82,7 @@ void resetIMU(uint8_t const  * const buffer, const uint8_t len){
 }
 
 void goalPos(uint8_t const * const buffer, const uint8_t len){
-    int32_t processed = sscanf((const char*)(buffer+1), "%d %d %d %d", goalConst, goalConst + 1, goalConst + 2, goalConst + 3);
+    int32_t processed = sscanf((const char*)(buffer+1), "%d %d %d %d!", goalConst, goalConst + 1, goalConst + 2, goalConst + 3);
     pros::lcd::print(LCD_OPEN_6, "VALS: %d %d %d %d", goalConst[0], goalConst[1], goalConst[2], goalConst[3]);
     return;
 }

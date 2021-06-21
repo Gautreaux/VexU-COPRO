@@ -1,9 +1,24 @@
 #ifndef __CONFIG__
 #define __CONFIG__
 
+// enable flag for extreme low power operation
+// #define LOW_POWER_MODE
+
 // universal stuff
 #define PORT_UNKNOWN 30
 #define CONTROLLER_THRESHOLD 20
+
+// how fast should start/stop rotation run
+//  something in range 0-127
+//      but you know, dont do 0, it wont do anything
+#ifdef LOW_POWER_MODE
+#define ROTATION_INTENSITY 30
+#else
+#define ROTATION_INTENSITY 127
+#endif
+
+#define SLOW_ROTATION_INTENSITY 30
+#define MAX_ROTATION_INTENSITY 127
 
 // constants for which line is which on the screen
 #define LCD_CONST_STATUS 0
@@ -15,9 +30,6 @@
 #define LCD_OPEN_6 6
 #define LCD_OPEN_7 7
 
-
-// enable flag for extreme low power operation
-// #define LOW_POWER_MODE
 
 // specify which robot is being target with this build
 // #define ROBOT_TARGET_DEV

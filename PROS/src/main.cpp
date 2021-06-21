@@ -3,6 +3,7 @@
 // #include "vexSerial.h"
 #include "vexMessenger.h"
 #include "util.h"
+#include "spencerPID.h"
 
 /**
  * Runs initialization code. This occurs as soon as the program is started.
@@ -12,12 +13,23 @@
  */
 pros::Imu IMU(IMU_PORT);
 
-#define CV_DEADZONE 20
-#define CV_X_TARGET 270
-#define CV_H_TARGET 25
+#define CV_DEADZONE 60
+
+#ifdef ROBOT_TARGET_24
+// These need to be recalibrated
+// #define CV_X_TARGET 270
+// #define CV_H_TARGET 25
+#endif //ROBOT_TARGET_24
+
+#ifdef ROBOT_TARGET_15
+#define CV_X_TARGET 330
+#define CV_H_TARGET 110
+#endif //ROBOT_TARGET_15
 
 //move power between 1 and 127 (inclusive)
-#define CV_MOVE_POWER 25
+#define CV_MOVE_POWER 96
+
+#define CV_PX_TO_DEG 25
 
 int goalConst[4];
 
@@ -41,27 +53,24 @@ void autoScore(void){
 		return;
 	}
 
-	if(targetX < (CV_X_TARGET - CV_DEADZONE)){
-		//turn left
-		updateMotorGroup(leftDrive, -CV_MOVE_POWER);
-		updateMotorGroup(rightDrive, CV_MOVE_POWER);
-		pros::lcd::print(LCD_AUTO_SCORE_STATUS, "TURN LEFT");
-	}else if(targetX > (CV_X_TARGET + CV_DEADZONE)){
-		//turn right
-		updateMotorGroup(leftDrive, CV_MOVE_POWER);
-		updateMotorGroup(rightDrive, -CV_MOVE_POWER);
-		pros::lcd::print(LCD_AUTO_SCORE_STATUS, "TURN RIGHT");
-	}else if(targetH > CV_H_TARGET){
+	if (targetH > CV_H_TARGET){
+		//we are close enough, any shot will make it
+		updateMotorGroup(topRollers, MAX_ROTATION_INTENSITY);
+		updateMotorGroup(rollers, MAX_ROTATION_INTENSITY);
+		pros::lcd::print(LCD_AUTO_SCORE_STATUS, "SCORE %d %d %d %d", targetX, targetY, targetX, targetH);
+	}
+	if(abs(targetX - CV_X_TARGET) > CV_DEADZONE){
+		//turn
+		if(!SpencerPID::isPIDRunning()){
+			SpencerPID::rotateDegrees((CV_X_TARGET - targetX) / CV_PX_TO_DEG);
+		}
+		pros::lcd::print(LCD_AUTO_SCORE_STATUS, "TURN %d %d %d %d", targetX, targetY, targetX, targetH);
+	}else{
 		//we know we are aligned, but too far back
 		//	so drive forward
 		updateMotorGroup(leftDrive, CV_MOVE_POWER);
 		updateMotorGroup(rightDrive, CV_MOVE_POWER);
-		pros::lcd::print(LCD_AUTO_SCORE_STATUS, "FORWARD");
-	}else{
-		//we are in position
-		updateMotorGroup(topRollers, MAX_ROTATION_INTENSITY);
-		updateMotorGroup(rollers, MAX_ROTATION_INTENSITY);
-		pros::lcd::print(LCD_AUTO_SCORE_STATUS, "SCORE");
+		pros::lcd::print(LCD_AUTO_SCORE_STATUS, "FORWARD %d %d %d %d", targetX, targetY, targetX, targetH);
 	}
 }
 
@@ -92,6 +101,7 @@ void initialize() {
 
 	topRollers.emplace_back(TOP_ROLLER_MOTOR_PORT, TOP_DIR);
 #endif
+
 	//in docs, not working
 	// IMU.set_reversed(true);
 	IMU.reset();
@@ -192,6 +202,8 @@ void opcontrol() {
 	// keep a count of how many times the loop has run
 	uint32_t loop_counter = 0;
 
+	int32_t ctr = 50000;
+
 	while(true){
 		loop_counter++;
 		pros::lcd::print(LCD_LOCAL_STATUS, "Loop %d checkpoint A", loop_counter);
@@ -265,8 +277,17 @@ void opcontrol() {
 			}else if(!triedAuto){
 				updateMotorGroup(topRollers, 0);
 			}
+
+			if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT)){
+				//rotate left 90
+				SpencerPID::rotateDegrees(90);
+			}else if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)){
+				//rotate right 90
+				SpencerPID::rotateDegrees(-90);
+			}
 		}
 
+		SpencerPID::updatePID();
 
 		pros::lcd::print(LCD_LOCAL_STATUS, "Loop %d checkpoint Z", loop_counter);
 		pros::delay(50);

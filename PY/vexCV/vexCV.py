@@ -141,7 +141,7 @@ def getPossibleGoalPosition(frame):
     return template_rectangles
 
 # partion the list template rectangles
-#   int a list of lists
+#   int a list of lists of rectangles
 def partionGuesses(template_rectangles):
     template_rectangles.sort(key = lambda x : ((x[0][0] + x[1][0]) / 2))
     groups = []
@@ -152,7 +152,7 @@ def partionGuesses(template_rectangles):
         y = (up_left[1] + low_right[1]) / 2
         if x > maxX:
             groups.append([])
-        groups[-1].append((x, y))
+        groups[-1].append(((up_left, low_right, x, y)))
         maxX = max(maxX, low_right[0])
     
     return groups
@@ -187,36 +187,25 @@ def getBestGoalPosition(frame, frame_to_annotate = None):
     sum_x = 0
     sum_y = 0
 
-    for x,y in biggest_group:
+    for _,_,x,y in biggest_group:
         sum_x += x
         sum_y += y
 
     c_x = int(sum_x / len(biggest_group))
     c_y = int(sum_y / len(biggest_group))
-
+            
     # draw the template matches
     if frame_to_annotate is not None:
-        for up_left, low_right in template_rectangles:
+        for up_left, low_right, _,_, in biggest_group:
             cv.rectangle(frame_to_annotate, up_left, low_right, (0,30, 128), thickness=2)
-            
 
     # try and resolve distance
-    #largest_rect = max(template_rectangles, key=(lambda x : x[1][0] - x[0][0]))
-
-    frame_hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
-    frame_blurry_af = cv.GaussianBlur(frame_hsv, (15,15), 0)
-    ff_mask = np.zeros((frame_blurry_af.shape[0] + 2, frame_blurry_af.shape[1] + 2, 1), np.uint8)
-    some_int, colored, mask, bounding  = cv.floodFill(frame_hsv, ff_mask, (c_x, c_y + 20), (0,0, 255), loDiff=(25,50,50), upDiff=(25,50,50), flags=(4 | cv.FLOODFILL_FIXED_RANGE))
-
-    x0, y0, w, h = bounding
+    largest_rect = max(biggest_group, key=(lambda x : x[1][0] - x[0][0]))
+    w = (largest_rect[1][0] - largest_rect[0][0])
+    h = (largest_rect[1][1] - largest_rect[0][1])
     
     if frame_to_annotate is not None:
-        cv.rectangle(frame_to_annotate, (x0, y0), (x0 + w, y0 + h), (0, 255, 0), 2)
         cv.circle(frame_to_annotate, (c_x, c_y), 15, (0, 0, 255), thickness=-1)
-
-    if w < 5 or h < 5:
-        w = 0
-        h = 0
 
     return (c_x, c_y, w, h)
 
