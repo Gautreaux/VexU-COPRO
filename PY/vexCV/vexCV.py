@@ -65,14 +65,19 @@ def connectCamera(camera_details):
     global cv_capture
     if cv_capture is not None:
         return
-    
+        
+    cv_capture = []
     print("Starting video connection")
-    if camera_details[1]:
-        cv_capture = cv.VideoCapture(camera_details[0], cv.CAP_DSHOW)
-        print(cv_capture.get(cv.CAP_PROP_EXPOSURE))
-        cv_capture.set(cv.CAP_PROP_EXPOSURE, -4) 
-    else:
-        cv_capture = cv.VideoCapture(camera_details[0])
+    for camera, isWebcam in camera_details:
+        if isWebcam:
+            cap = cv.VideoCapture(camera, cv.CAP_DSHOW)
+            # print(cap.get(cv.CAP_PROP_EXPOSURE))
+            cap.set(cv.CAP_PROP_EXPOSURE, -4) 
+        else:
+            print(camera)
+            cap = cv.VideoCapture(camera)
+            print(cap)
+        cv_capture.append(cap)
     print("Camera Connected")
 
 
@@ -259,16 +264,23 @@ def cvSetup(camera_path, frames_to_skip = 0):
     connectCamera(camera_path)
 
     while frames_to_skip > 0:
-        r,f = cv_capture.read()
+        for cap in cv_capture:
+            r,f = cap.read()
         frames_to_skip -= 1
 
 def cvStep(show_annotated : bool = False):
-    r, f = cv_capture.read()
+
+    r, f = cv_capture[0].read()
+    r2, f2 = cv_capture[1].read()
+
+    # print(f"r {r}, r2: {r2}")
 
     if show_annotated:
         frame_to_annotate = f.copy()
+        frame_to_annotate_2 = f2.copy()
     else:
         frame_to_annotate = None
+        frame_to_annotate_2 = None
 
     try:
         if not r:
@@ -292,6 +304,99 @@ def cvStep(show_annotated : bool = False):
         print(f"{group_center} --> {filtered}")
         if filtered:
             vexAction.VEX_sendGoalTarget(filtered)
+
+
+        # try stuff for low camera
+        low_grey = cv.cvtColor(f2, cv.COLOR_BGR2GRAY)
+        low_canny = cv.Canny(low_grey, 50, 200)
+        low_hsv = cv.cvtColor(f2, cv.COLOR_BGR2HSV)
+
+        hsv_h, hsv_s, hsv_v = cv.split(low_hsv)
+
+        hsv_v_canny = cv.Canny(cv.GaussianBlur(hsv_v, (3,3), 0), 50, 200)
+        hsv_s_canny = cv.Canny(cv.GaussianBlur(hsv_s, (3,3), 0), 50, 200)
+        hsv_h_canny = cv.Canny(cv.GaussianBlur(hsv_h, (3,3), 0), 50, 200)
+
+        imgs_for_circle_detect = [
+                ("grey", low_grey),
+                ("hsv_v", hsv_v),
+                ("hsv_h", hsv_h),
+                ("hsv_s", hsv_s),
+        ]
+
+        circle_detect_out = []
+
+        # not great and slow
+        # for name,img in imgs_for_circle_detect:
+        #     img = cv.medianBlur(img,5)
+        #     cimg = cv.cvtColor(img,cv.COLOR_GRAY2BGR)
+        #     circles = cv.HoughCircles(img,cv.HOUGH_GRADIENT,1,100,
+        #                                 param1=350,param2=10,minRadius=15,maxRadius=0)
+        #     if circles is not None:
+        #         circles = np.uint16(np.around(circles))
+        #         for i in circles[0,:]:
+        #             # draw the outer circle
+        #             cv.circle(cimg,(i[0],i[1]),i[2],(0,255,0),2)
+        #             # draw the center of the circle
+        #             cv.circle(cimg,(i[0],i[1]),2,(0,0,255),3)
+
+        #     circle_detect_out.append((name, cimg))
+
+        for name, img in imgs_for_circle_detect:
+            img = cv.medianBlur(img,5)
+            cimg = cv.cvtColor(img,cv.COLOR_GRAY2BGR)
+            ret, thresh = cv.threshold(img, 100, 255, 0)
+            contours, _ = cv.findContours(thresh, cv.RETR_LIST, cv.CHAIN_APPROX_NONE)
+
+            for c in contours:
+
+                actualArea = cv.contourArea(c)
+                if(actualArea < 4096):
+                    # too small ( < 32x32 px)
+                    continue
+
+                x,y,w,h = cv.boundingRect(c)
+
+                # height_ratio = (w/h)
+                # if abs(height_ratio - 1) > .5:
+                #     # wrong shape
+                #     continue
+
+                # pixels in contour to rectangle size
+                #   effectively, holey-ness and regularness check
+                fullness_ratio = actualArea/(w*h)
+                if fullness_ratio < .50:
+                    # too sparse
+                    continue
+
+                cv.drawContours(cimg, [c], 0, (0, 255, 0), 3)
+                continue
+
+                cv.rectangle(cimg, (x,y), (x+w,y+h), (0,255,0), 7)
+
+
+
+            circle_detect_out.append((name,cimg))
+
+        imgs_raw = [
+                ("grey", low_grey),
+                ("hsv_v", hsv_v),
+                ("hsv_h", hsv_h),
+                ("hsv_s", hsv_s),
+
+                ("raw", f2),
+                ("canny", low_canny),
+                ("hsv", low_hsv),
+                ("hsv_h_canny", hsv_h_canny),
+                ("hsv_v_canny", hsv_v_canny),
+                ("hsv_s_canny", hsv_s_canny),
+        ]
+
+        imgs_raw.extend(circle_detect_out)
+
+        showImageBlock(
+            imgs_raw
+        )
     finally:
         if show_annotated:
             if filter_datastore[FILTER_LAST_TTL] != MAX_NON_FRAME and filter_datastore[FILTER_LAST_TTL] and filter_datastore[FILTER_LAST_RETURNED]:
@@ -301,4 +406,6 @@ def cvStep(show_annotated : bool = False):
 
             cv.namedWindow("annotated", cv.WINDOW_NORMAL)
             cv.imshow("annotated", frame_to_annotate)
+            cv.namedWindow("annotated_2", cv.WINDOW_NORMAL)
+            cv.imshow("annotated_2", frame_to_annotate_2)
             cv.waitKey(1)

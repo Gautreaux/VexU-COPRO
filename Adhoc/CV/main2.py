@@ -12,11 +12,18 @@ import numpy as np
 # print(f"CWD: {os.getcwd()}")
 
 FRAMES_TO_SKIP = 420
-FRAMES_TO_SKIP = 60
+FRAMES_TO_SKIP = 50
 
-# vexCV.cvSetup((os.path.abspath(__file__).rpartition('\\')[0] + "/dev/15.1.avi", False), FRAMES_TO_SKIP)
-vexCV.cvSetup((0, True))
+vexCV.cvSetup(
+    [
+        (os.path.abspath(__file__).rpartition('\\')[0] + "/dev/15.1.avi", False),
+        (os.path.abspath(__file__).rpartition('\\')[0] + "/dev/lowCam_15_ball.avi", False),
+        # (os.path.abspath(__file__).rpartition('\\')[0] + "/dev/swirlTestVid8.mp4", False),
+        # (os.path.abspath(__file__).rpartition('\\')[0] + "/dev/swirlTestVid12.mp4", False),
 
+    ],
+    FRAMES_TO_SKIP)
+# vexCV.cvSetup([(0, True), (1, True)])
 start_time = time.time()
 REPORT_INTERVAL_FRAMES = 64
 frame_counter = 0
