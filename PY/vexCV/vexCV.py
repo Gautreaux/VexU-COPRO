@@ -5,21 +5,7 @@ import time
 
 REPORT_INTERVAL_FRAMES = 64
 
-from . import cv_template, cv_template_h, cv_template_w, cv_capture
-try:
-    from ..vexController import vexAction
-except ImportError:
-    print("Error importing vex action.\n"
-          "  If you are running adhoc this is expected.\n"
-          "  If not, this is a problem."
-    )
-
-    # create a proxy for vexAction
-    class vexAction:
-        @classmethod
-        def VEX_sendGoalTarget(_, target):
-            print(f"Proxy send: {target}")
-            pass
+from . import cv_template, cv_template_h, cv_template_w
 
 # how many goal guess points are needed for a consensus
 CONSENSUS_THRESHOLD = 5
@@ -81,7 +67,6 @@ def connectCamera(camera_details):
     print("Camera Connected")
     return cap
 
-
 # magic sharpening function
 def unsharp_mask(image, kernel_size=(5, 5), sigma=1.0, amount=1.0, threshold=0):
     """Return a sharpened version of the image, using an unsharp mask."""
@@ -118,7 +103,6 @@ def sharpenGenerator(frame, run_sharpen):
     # yield cv.filter2D(frame, -1, k)
 
     # yield unsharp_mask(frame)
-
 
 # get a list of possible goal positions in the image
 #   returns a list of rectangles in the image
@@ -275,7 +259,7 @@ def cvSetup(camera_details, frames_to_skip = 0):
     return cap
 
 def cvStep(show_annotated : bool = False):
-
+    raise NotImplemented("CV step deprecated")
     r, f = cv_capture[0].read()
     r2, f2 = cv_capture[1].read()
 
@@ -426,7 +410,7 @@ def getNextFrameBlocking(capture):
         r,f = capture.read()
     return f
 
-def findGoals(f, frame_to_annotate, run_sharpen):
+def findGoals(f, frame_to_annotate, q, run_sharpen):
     group_center = getBestGoalPosition(f, frame_to_annotate, run_sharpen)
 
     if group_center is None:
@@ -442,9 +426,9 @@ def findGoals(f, frame_to_annotate, run_sharpen):
             return
 
     filtered = goalFilter(group_center)
-    print(f"{group_center} --> {filtered}")
+    # print(f"{group_center} --> {filtered}")
     if filtered:
-        vexAction.VEX_sendGoalTarget(filtered)
+        q.put((True, filtered))
     
     if frame_to_annotate is not None:
         if filter_datastore[FILTER_LAST_TTL] != MAX_NON_FRAME and filter_datastore[FILTER_LAST_TTL] and filter_datastore[FILTER_LAST_RETURNED]:
@@ -452,7 +436,7 @@ def findGoals(f, frame_to_annotate, run_sharpen):
             cv.circle(frame_to_annotate, filter_datastore[FILTER_LAST_RETURNED][:2], 15, (0,0,255), -1)
             cv.circle(frame_to_annotate, filter_datastore[FILTER_LAST_RETURNED][:2], 12, (255 * filter_datastore[FILTER_LAST_TTL] / (MAX_NON_FRAME),0,0), -1)
 
-def findBalls(f, frame_to_annotate):
+def findBalls(f, frame_to_annotate, q):
     low_hsv = cv.cvtColor(f, cv.COLOR_BGR2HSV)
 
     _, hsv_s, _ = cv.split(low_hsv)
@@ -484,18 +468,22 @@ def findBalls(f, frame_to_annotate):
             # too sparse
             continue
 
-        ballLocations.append((int(x+w/2), int(y+h/2), int((w + h) / 4)))
+        c_x = int(x+w/2)
+        c_y = int(y+h/2)
+        c_r = int((w + h) / 4)
+        color = 0
+
+        ballLocations.append((c_x, c_y, c_r, color))
         if frame_to_annotate is not None:
             # cv.drawContours(frame_to_annotate, [c], 0, (0, 255, 0), 3)
             cv.circle(frame_to_annotate, ballLocations[-1][:2], ballLocations[-1][-1], (0,255,0), 2)
         
         #TODO - determine color (probably from h mask)
-    # TODO - send data to vex bot
-
-
+    for ball in ballLocations:
+        q.put((False, ball))
 
 # entry point for multi-processing
-def mp_entry_common(args, isGoals, camera_details):
+def mp_entry_common(args, isGoals, camera_details, q):
     cap = cvSetup(camera_details)
 
     show_annotated = args['showAnnotated']
@@ -518,9 +506,9 @@ def mp_entry_common(args, isGoals, camera_details):
 
         try:
             if isGoals:
-                findGoals(f, frame_to_annotate, run_sharpen)
+                findGoals(f, frame_to_annotate, q, run_sharpen)
             else:
-                findBalls(f, frame_to_annotate)
+                findBalls(f, frame_to_annotate, q)
         finally:
             if show_annotated:
                 cv.namedWindow(f"{short_name}_annotated", cv.WINDOW_NORMAL)
@@ -537,18 +525,25 @@ def mp_entry_common(args, isGoals, camera_details):
                 frame_counter = 0
 
 # run the cv loop via multiprocessing
+#   returns handles to the processes
 def cv_mp(args, cameras):
     print("CV_MP")
+    
+    q = multiprocessing.Queue()
 
     if not cameras:
         print("Error, no cameras provided")
 
-    goals_process = multiprocessing.Process(target=mp_entry_common, args=(args, True, cameras[0]), daemon=True)
-    goals_process.start()
-    if len(cameras) == 2:
-        balls_process = multiprocessing.Process(target=mp_entry_common, args=(args, False, cameras[1]), daemon=True)
+    if cameras[0]:
+        goals_process = multiprocessing.Process(target=mp_entry_common, args=(args, True, cameras[0], q), daemon=True)
+        goals_process.start()
+    else:
+        goals_process = None
+
+    if cameras[1]:
+        balls_process = multiprocessing.Process(target=mp_entry_common, args=(args, False, cameras[1], q), daemon=True)
         balls_process.start()
     else:
         balls_process = None
 
-
+    return (goals_process, balls_process, q)

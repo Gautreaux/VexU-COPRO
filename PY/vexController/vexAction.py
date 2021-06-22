@@ -1,7 +1,7 @@
 
 import itertools
 from typing import Optional, Tuple
-from ..vexMessenger import v_messenger
+from vexMessenger import v_messenger
 
 #TODO - proper enum:
 COMMAND_ENUM = {
@@ -13,6 +13,7 @@ COMMAND_ENUM = {
     "readIMU" : 32,
     "resetIMU" : 33,
     "goalPos" : 64,
+    "ballPos" : 65,
 }
 
 class IllegalCommand(Exception):
@@ -65,3 +66,6 @@ def VEX_readIMU() -> float:
 def VEX_sendGoalTarget(goalPos : Tuple[int, int, int, int]) -> None:
     # print(f"Sending goal pos: {goalPos}")
     buildSendCommand("goalPos", f"{goalPos[0]} {goalPos[1]} {goalPos[2]} {goalPos[3]}!".encode("ascii"))
+
+def VEX_sendBallTarget(ballPos: Tuple[int, int, int, int]) -> None:
+    buildSendCommand("goalPos", f"{ballPos[0]} {ballPos[1]} {ballPos[2]} {ballPos[3]}!".encode("ascii"))

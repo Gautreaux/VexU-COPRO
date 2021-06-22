@@ -17,6 +17,9 @@ if __name__ == "__main__":
         (os.path.abspath(__file__).rpartition('\\')[0] + "/dev/lowCam_15_ball.avi", False),
     ]
 
+    # cameras[0] = (0, True)
+    # cameras[1] = None
+
     args = {
         "showAnnotated" : True,
         "sharpen" : False,

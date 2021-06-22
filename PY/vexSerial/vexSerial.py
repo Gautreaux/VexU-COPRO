@@ -151,6 +151,6 @@ class VexSerial():
         except queue.Empty:
             return None
 
-    def teardown():
+    def teardown(self):
         #attempt a clean exit
         _SEND_RCV_RUNNING = False

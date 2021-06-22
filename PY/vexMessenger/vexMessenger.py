@@ -3,7 +3,7 @@ import itertools
 import time
 from threading import TIMEOUT_MAX
 from typing import Callable, Optional
-from ..vexSerial import v_ser
+from vexSerial import v_ser
 
 class VexMessenger():
 

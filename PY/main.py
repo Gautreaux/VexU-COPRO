@@ -1,7 +1,10 @@
-from .vexMessenger import v_messenger
-from .vexMessenger.vexMessengerTest import bytesTest
-from .vexController import vexAction
-from .vexCV import vexCV
+import multiprocessing
+if multiprocessing.current_process().name == "MainProcess":
+    print(f"Importing messenger/serial/action: {multiprocessing.parent_process()} {multiprocessing.current_process().name}")
+
+    from vexMessenger import v_messenger
+    from vexController import vexAction
+from vexCV import vexCV
 
 import time
 
@@ -9,7 +12,44 @@ def main():
 
     print("Stating messenger connection...")
     v_messenger.connect()
+    print("Messenger Connected")
 
+    cv_args = {
+        "showAnnotated": True,
+        "sharpen": False,
+    }
+
+    cameras = [None,None]
+
+    cameras[0] = (
+        "../Adhoc/CV/dev/15.1.avi",
+        False
+    )
+
+    cameras[1] = (
+        "../Adhoc/CV/dev/lowCam_15_ball.avi",
+        False
+    )
+
+    g_p, b_p, q = vexCV.cv_mp(cv_args, cameras)
+
+    try:
+        while True:
+            # just sleep forever while cameras do things
+            # s = v_messenger.readDataMessageBlocking()
+            isGoal, data = q.get()
+            # print(f"outbound message: {isGoal} {data}")
+            if isGoal:
+                vexAction.VEX_sendGoalTarget(data)
+            else:
+                vexAction.VEX_sendBallTarget(data)
+    except KeyboardInterrupt:
+        print("Stopping processes...")
+        if g_p:
+            g_p.kill()
+        if b_p:
+            b_p.kill()
+        print("Killed child processes...")
 
     exit(0)
 
@@ -50,6 +90,4 @@ def main():
     # print("Messenger disconnected")
 
 if __name__ == "__main__":
-    # this file was run directly
-    print("Running directly (no init) (this <probably> wont matter?)")
     main()
