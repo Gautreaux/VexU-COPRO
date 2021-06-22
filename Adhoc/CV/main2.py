@@ -20,6 +20,12 @@ if __name__ == "__main__":
     # cameras[0] = (0, True)
     # cameras[1] = None
 
+    # cameras[0] = (0, True)
+    # cameras[1] = (2, True)
+
+    cameras[0] = None
+    cameras[1] =  (os.path.abspath(__file__).rpartition('\\')[0] + "/dev/ballsForColor.avi", False)
+
     args = {
         "showAnnotated" : True,
         "sharpen" : False,

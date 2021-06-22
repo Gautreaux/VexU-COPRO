@@ -23,6 +23,9 @@ filter_datastore = [0]*16
 FILTER_LAST_RETURNED = 0
 FILTER_LAST_TTL = 1
 
+BALL_COLOR_BLUE = 0
+BALL_COLOR_RED = 1
+
 # show an image and block
 #   do not put into a non-debug loop
 def showImageBlock(images):
@@ -439,16 +442,21 @@ def findGoals(f, frame_to_annotate, q, run_sharpen):
 def findBalls(f, frame_to_annotate, q):
     low_hsv = cv.cvtColor(f, cv.COLOR_BGR2HSV)
 
-    _, hsv_s, _ = cv.split(low_hsv)
+    hsv_h, hsv_s, _ = cv.split(low_hsv)
+
 
     blur = cv.medianBlur(hsv_s, 5)
+    blur_h = cv.medianBlur(hsv_h, 5)
 
-    _, thresh = cv.threshold(blur, 100, 255, 0)
+    _, thresh = cv.threshold(blur, 180, 255, 0)
     contours, _ = cv.findContours(thresh, cv.RETR_LIST, cv.CHAIN_APPROX_NONE)
 
     ballLocations = []
 
     for c in contours:
+        # cv.drawContours(frame_to_annotate, [c], 0, (0, 255, 0), 3)
+        # continue
+
         actualArea = cv.contourArea(c)
         if(actualArea < 4096):
             # too small ( < 32x32 px)
@@ -471,14 +479,32 @@ def findBalls(f, frame_to_annotate, q):
         c_x = int(x+w/2)
         c_y = int(y+h/2)
         c_r = int((w + h) / 4)
-        color = 0
+
+        mask = np.zeros(blur_h.shape, dtype=np.uint8)
+        cv.drawContours(mask, [c], -1, (255), -1)
+
+        # mean, stddev = cv.meanStdDev(blur_h, mask=mask)
+        # print(f"{mean} {stddev}")
+
+        hist = cv.calcHist([hsv_h], [0], mask, [8], [0,180])
+        hist_score = (hist[0] + hist[-1]) / sum(hist)
+
+        # print(f"{hist} {hist_score}")
+        # showImageBlock(
+        #     [("mask", mask)]
+        # )
+
+        # color = BALL_COLOR_RED if crop.std() > 40 else BALL_COLOR_BLUE
+        color = BALL_COLOR_RED if hist_score > .50 else BALL_COLOR_BLUE
+        # color = crop.mean()
 
         ballLocations.append((c_x, c_y, c_r, color))
         if frame_to_annotate is not None:
             # cv.drawContours(frame_to_annotate, [c], 0, (0, 255, 0), 3)
-            cv.circle(frame_to_annotate, ballLocations[-1][:2], ballLocations[-1][-1], (0,255,0), 2)
-        
-        #TODO - determine color (probably from h mask)
+            print(ballLocations[-1])
+            draw_color =  (255, 0,0) if color == BALL_COLOR_BLUE else (0, 0, 255)
+            cv.circle(frame_to_annotate, ballLocations[-1][:2], ballLocations[-1][2], draw_color, 2)
+
     for ball in ballLocations:
         q.put((False, ball))
 

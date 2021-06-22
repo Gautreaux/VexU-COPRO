@@ -30,7 +30,7 @@ def openVideoCapture():
     capture.release()
 
 def recordVideo():
-    capture = cv.VideoCapture(1, cv.CAP_DSHOW)
+    capture = cv.VideoCapture(2, cv.CAP_DSHOW)
     out = cv.VideoWriter(f'out_vid.{round(time.time())}.avi', cv.VideoWriter_fourcc('M', 'J', 'P', 'G'), 10, (int(capture.get(3)), int(capture.get(4))))
 
     while True:
@@ -781,7 +781,7 @@ def hsvTesting3(frame, video = None):
 
 def cv_main():
     print("CV_MAIN")
-    # recordVideo()
+    recordVideo()
 
     # f = cv.imread('dev/vexuGoal.jpg', cv.IMREAD_UNCHANGED)
     # imageHSVSliders(f)

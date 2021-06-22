@@ -111,11 +111,12 @@ void initialize() {
 	// IMU.set_reversed(true);
 	IMU.reset();
 
-	if(VexMessenger::v_messenger->try_connect(3000)){
-		pros::lcd::print(LCD_MESSENGER_CONNECTED, "Messenger Connected.");
-	}else{
-		pros::lcd::print(LCD_MESSENGER_CONNECTED, "Messenger Not Connected.");
-	}
+
+	// if(VexMessenger::v_messenger->try_connect(3000)){
+	// 	pros::lcd::print(LCD_MESSENGER_CONNECTED, "Messenger Connected.");
+	// }else{
+	// 	pros::lcd::print(LCD_MESSENGER_CONNECTED, "Messenger Not Connected.");
+	// }
 
 #ifdef LOW_POWER_MODE
 	pros::lcd::print(LCD_CONST_STATUS, "RUNNING IN LOW POWER MODE");
@@ -264,23 +265,23 @@ void opcontrol() {
 				updateMotorGroup(intake, 0);
 			}
 
-			if(master.get_digital(pros::E_CONTROLLER_DIGITAL_R2)){
-				updateMotorGroup(rollers, MAX_ROTATION_INTENSITY);
-			}else if(master.get_digital(pros::E_CONTROLLER_DIGITAL_L2)){
-				updateMotorGroup(rollers, -MAX_ROTATION_INTENSITY);
-#ifdef DRIVER_HUMZA
-				updateMotorGroup(intake, -MAX_ROTATION_INTENSITY);
-#endif //DRIVER_HUMZA
-			}else if(!triedAuto){
-				updateMotorGroup(rollers, 0);
-			}
-
 			if(master.get_digital(pros::E_CONTROLLER_DIGITAL_A)){
 				updateMotorGroup(topRollers, MAX_ROTATION_INTENSITY);
 			}else if(master.get_digital(pros::E_CONTROLLER_DIGITAL_Y)){
 				updateMotorGroup(topRollers, -MAX_ROTATION_INTENSITY);
 			}else if(!triedAuto){
 				updateMotorGroup(topRollers, 0);
+			}
+
+			if(master.get_digital(pros::E_CONTROLLER_DIGITAL_R2)){
+				updateMotorGroup(rollers, MAX_ROTATION_INTENSITY*.7);
+			}else if(master.get_digital(pros::E_CONTROLLER_DIGITAL_L2)){
+				updateMotorGroup(rollers, -MAX_ROTATION_INTENSITY*.7);
+#ifdef DRIVER_HUMZA
+				updateMotorGroup(topRollers, -MAX_ROTATION_INTENSITY);
+#endif //DRIVER_HUMZA
+			}else if(!triedAuto){
+				updateMotorGroup(rollers, 0);
 			}
 
 			if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT)){

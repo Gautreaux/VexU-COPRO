@@ -21,15 +21,18 @@ def main():
 
     cameras = [None,None]
 
-    cameras[0] = (
-        "../Adhoc/CV/dev/15.1.avi",
-        False
-    )
+    # cameras[0] = (
+    #     "../Adhoc/CV/dev/15.1.avi",
+    #     False
+    # )
 
-    cameras[1] = (
-        "../Adhoc/CV/dev/lowCam_15_ball.avi",
-        False
-    )
+    # cameras[1] = (
+    #     "../Adhoc/CV/dev/lowCam_15_ball.avi",
+    #     False
+    # )
+
+    cameras[0] = (0, True)
+    cameras[1] = (2, True)
 
     g_p, b_p, q = vexCV.cv_mp(cv_args, cameras)
 

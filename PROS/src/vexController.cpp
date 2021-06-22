@@ -41,6 +41,9 @@ void processMessage(uint8_t const  * const buffer, const uint8_t len){
     case COMMAND_ENUM::GOAL_POS:
         goalPos(buffer, len);
         return;
+    case COMMAND_ENUM::BALL_POS:
+        ballPos(buffer, len);
+        return;
     default:
         pros::lcd::print(LCD_OPEN_7, "Illegal Command: 0x%X (%d)", buffer[0], buffer[0]);
         return;
@@ -84,5 +87,12 @@ void resetIMU(uint8_t const  * const buffer, const uint8_t len){
 void goalPos(uint8_t const * const buffer, const uint8_t len){
     int32_t processed = sscanf((const char*)(buffer+1), "%d %d %d %d!", goalConst, goalConst + 1, goalConst + 2, goalConst + 3);
     pros::lcd::print(LCD_OPEN_6, "VALS: %d %d %d %d", goalConst[0], goalConst[1], goalConst[2], goalConst[3]);
+    return;
+}
+
+void ballPos(uint8_t const * const buffer, const uint8_t len){
+    //TODO - implement
+    // int32_t processed = sscanf((const char*)(buffer+1), "%d %d %d %d!", goalConst, goalConst + 1, goalConst + 2, goalConst + 3);
+    // pros::lcd::print(LCD_OPEN_6, "VALS: %d %d %d %d", goalConst[0], goalConst[1], goalConst[2], goalConst[3]);
     return;
 }
