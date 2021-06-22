@@ -10,6 +10,4 @@ cv_template = cv.Canny(cv_template_blur, 5, 50)
 
 cv_template_h, cv_template_w = cv_template.shape
 
-cv_capture = None
-
 print("CV init done")
