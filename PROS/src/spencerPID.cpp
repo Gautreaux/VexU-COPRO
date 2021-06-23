@@ -5,8 +5,11 @@ namespace SpencerPID{
         double targetRotation = 0;
         bool pidRunning = false;
         uint32_t pidStartTime = 0;
+        uint32_t pidLastUpdateTime = 0;
         double totalError = 0;
         double lastInstantError = 0;
+
+        double maxI = 0;
 
         // tracks qty consecutive low power intsances
         //  eventually stopping stuck loops
@@ -34,7 +37,9 @@ namespace SpencerPID{
 
         pidRunning = true;
         totalError = 0;
-        pidStartTime = pros::millis();
+        pidStartTime = pros::millis() / 1000.0;
+        pidLastUpdateTime = pidStartTime;
+        maxI = 0;
     }
 
     void driveStraightInches(const double inches){
@@ -51,22 +56,39 @@ namespace SpencerPID{
         pros::lcd::print(LCD_OPEN_6, "%f", nowError);
 
         if(abs(nowError) < PID_THRESHOLD){
-            stopDrive();
-            pidRunning = false;
-            return;
+            if(consecLowCtr > 2){
+                stopDrive();
+                pidRunning = false;
+                return;
+            }else{
+                consecLowCtr++;
+            }
+        }else{
+            consecLowCtr = 0;
         }
 
-        // auto elapsedTime = pros::millis() - pidStartTime;
+        double nowTime = pros::millis() / 1000.0;
+        double elapsedTime = nowTime - pidLastUpdateTime;
+        pidLastUpdateTime = nowTime;
 
-        totalError += nowError;
+        totalError += nowError * PID_I_CONST * elapsedTime;
 
-        auto errorThingy = (nowError - lastInstantError);
+        totalError = std::max(std::min(totalError, I_MAX), -I_MAX);
+
+        double errorThingy = 0;
+        if (elapsedTime != 0)
+        {
+            errorThingy = (nowError - lastInstantError) / elapsedTime;
+        }
 
         lastInstantError = nowError;
 
+        maxI = std::max(std::abs(totalError), maxI);
+        pros::lcd::print(LCD_OPEN_7, "PID: %.03f %.03f %.03f %.03f", nowError * PID_P_CONST, totalError, errorThingy * PID_D_CONST, maxI);
+
         int k = (
               (nowError * PID_P_CONST) 
-            + (totalError * PID_I_CONST) 
+            + (totalError) 
             + (errorThingy * PID_D_CONST)
         );
 

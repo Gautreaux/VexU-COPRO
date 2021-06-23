@@ -17,9 +17,8 @@ pros::Imu IMU(IMU_PORT);
 #define CV_DEADZONE 60
 
 #ifdef ROBOT_TARGET_24
-// These need to be recalibrated
-#define CV_X_TARGET 270
-#define CV_H_TARGET 25
+#define CV_X_TARGET 315
+#define CV_H_TARGET 110
 #endif //ROBOT_TARGET_24
 
 #ifdef ROBOT_TARGET_15
@@ -112,6 +111,10 @@ void initialize() {
 	// IMU.set_reversed(true);
 	IMU.reset();
 
+	pros::delay(10);
+	do{
+		pros::delay(10);
+	}while(IMU.is_calibrating());
 
 	// if(VexMessenger::v_messenger->try_connect(3000)){
 	// 	pros::lcd::print(LCD_MESSENGER_CONNECTED, "Messenger Connected.");
@@ -287,10 +290,10 @@ void opcontrol() {
 
 			if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT)){
 				//rotate left 90
-				SpencerPID::rotateDegrees(90);
+				SpencerPID::rotateDegrees(15);
 			}else if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)){
 				//rotate right 90
-				SpencerPID::rotateDegrees(-90);
+				SpencerPID::rotateDegrees(-15);
 			}
 
 #else // DRIVER_TRENT
@@ -343,6 +346,6 @@ void opcontrol() {
 		SpencerPID::updatePID();
 
 		pros::lcd::print(LCD_LOCAL_STATUS, "Loop %d checkpoint Z", loop_counter);
-		pros::delay(50);
+		pros::delay(10);
 	}
 }

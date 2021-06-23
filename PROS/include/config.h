@@ -38,9 +38,9 @@
 
 
 // specify which driver is running this code
-// #define DRIVER_AARON
+#define DRIVER_AARON
 // #define DRIVER_HUMZA
-#define DRIVER_TRENT
+// #define DRIVER_TRENT
 
 
 #ifdef ROBOT_TARGET_DEV

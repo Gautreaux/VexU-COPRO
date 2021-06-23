@@ -44,6 +44,7 @@ def main():
             # print(f"outbound message: {isGoal} {data}")
             if isGoal:
                 vexAction.VEX_sendGoalTarget(data)
+                print(data)
             else:
                 vexAction.VEX_sendBallTarget(data)
     except KeyboardInterrupt:

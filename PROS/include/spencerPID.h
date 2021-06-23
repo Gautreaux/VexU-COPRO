@@ -5,9 +5,11 @@
 // in degrees
 #define PID_THRESHOLD 1
 
-#define PID_P_CONST 1
-#define PID_I_CONST .2
-#define PID_D_CONST 4
+#define I_MAX 50.0
+
+#define PID_P_CONST 5
+#define PID_I_CONST .5
+#define PID_D_CONST 3
 
 extern pros::Imu IMU;
 
