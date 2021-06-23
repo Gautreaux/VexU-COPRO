@@ -64,7 +64,7 @@ def connectCamera(camera_details):
     if isWebcam:
         cap = cv.VideoCapture(camera, cv.CAP_DSHOW)
         # print(cap.get(cv.CAP_PROP_EXPOSURE))
-        cap.set(cv.CAP_PROP_EXPOSURE, -4) 
+        cap.set(cv.CAP_PROP_EXPOSURE, -3) 
     else:
         cap = cv.VideoCapture(camera)
     print("Camera Connected")
@@ -501,7 +501,7 @@ def findBalls(f, frame_to_annotate, q):
         ballLocations.append((c_x, c_y, c_r, color))
         if frame_to_annotate is not None:
             # cv.drawContours(frame_to_annotate, [c], 0, (0, 255, 0), 3)
-            print(ballLocations[-1])
+            # print(ballLocations[-1])
             draw_color =  (255, 0,0) if color == BALL_COLOR_BLUE else (0, 0, 255)
             cv.circle(frame_to_annotate, ballLocations[-1][:2], ballLocations[-1][2], draw_color, 2)
 

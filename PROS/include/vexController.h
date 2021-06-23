@@ -24,6 +24,7 @@ enum class COMMAND_ENUM {
 extern pros::Imu IMU;
 
 extern int goalConst[];
+extern int ballConst[];
 
 // process a single message instance
 void processMessage(uint8_t const  * const buffer, const uint8_t len);

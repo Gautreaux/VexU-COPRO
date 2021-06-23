@@ -37,6 +37,7 @@ pros::Imu IMU(IMU_PORT);
 #define CV_PX_TO_DEG 25
 
 int goalConst[4];
+int ballConst[4];
 
 //TODO - probably refactor
 // auto score on the goal
@@ -77,6 +78,15 @@ void autoScore(void){
 		updateMotorGroup(rightDrive, CV_MOVE_POWER);
 		pros::lcd::print(LCD_AUTO_SCORE_STATUS, "FORWARD %d %d %d %d", targetX, targetY, targetX, targetH);
 	}
+}
+
+void autoPickup(){
+	int targetX = goalConst[0];
+	int targetY = goalConst[1];
+	int targetR = goalConst[2];
+	// int targetC = goalConst[3];
+
+	
 }
 
 void initialize() {
@@ -248,6 +258,9 @@ void opcontrol() {
 			if(master.get_digital(pros::E_CONTROLLER_DIGITAL_X)){
 				triedAuto = true;
 				autoScore();
+			}else if(master.get_digital(pros::E_CONTROLLER_DIGITAL_B)){
+				triedAuto = true;
+				autoPickup();
 			}
 
 #ifdef DRIVER_HUMZA
@@ -288,13 +301,13 @@ void opcontrol() {
 				updateMotorGroup(rollers, 0);
 			}
 
-			if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT)){
-				//rotate left 90
-				SpencerPID::rotateDegrees(15);
-			}else if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)){
-				//rotate right 90
-				SpencerPID::rotateDegrees(-15);
-			}
+			// if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT)){
+			// 	//rotate left 90
+			// 	SpencerPID::rotateDegrees(15);
+			// }else if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)){
+			// 	//rotate right 90
+			// 	SpencerPID::rotateDegrees(-15);
+			// }
 
 #else // DRIVER_TRENT
 		int mask = 7;
