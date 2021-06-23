@@ -33,14 +33,14 @@
 
 // specify which robot is being target with this build
 // #define ROBOT_TARGET_DEV
-// #define ROBOT_TARGET_24
-#define ROBOT_TARGET_15
+#define ROBOT_TARGET_24
+// #define ROBOT_TARGET_15
 
 
 // specify which driver is running this code
 // #define DRIVER_AARON
-#define DRIVER_HUMZA
-// #define DRIVER_TRENT
+// #define DRIVER_HUMZA
+#define DRIVER_TRENT
 
 
 #ifdef ROBOT_TARGET_DEV
@@ -155,7 +155,9 @@
 #endif // DRIVER_HUMZA
 
 #ifdef DRIVER_TRENT
-#error "Trent has not configured his drive style."
+#undef CONTROLLER_THRESHOLD
+#define CONTROLLER_THRESHOLD 0
+// #error "Trent has not configured his drive style."
 #endif // DRIVER_TRENT
 
 

@@ -4,7 +4,7 @@
 //     VexColor bottom;
 //     VexColor middle;
 //     VexColor top;
-    
+
 // public:
 //     const VexColor& operator[](std::size_t idx) const {
 //         switch (idx)
@@ -67,32 +67,40 @@
 //     }
 // }
 
+bool scoreGoalBlocking(void)
+{
+    // stores received message length
+	uint8_t messageLen;
+	
+	// buffer for received message
+	uint8_t messageBuffer[MAX_MESSAGE_LEN];
 
-bool scoreGoalBlocking(void){
-if(!VexMessenger::v_messenger->isConnected()){
+    if (!VexMessenger::v_messenger->isConnected())
+    {
         return false;
-    }else{
+    }
+    else
+    {
         pros::lcd::print(LCD_MESSENGER_CONNECTED, "MESSENGER_CONNECTED");
 
         //see if there is a message to process
 
         //used to keep this loop from being greedy and blocking
         int msgCounter = 16;
-        while(msgCounter-- && VexMessenger::v_messenger->readDataMessage(messageBuffer, messageLen, 0)){
+        while (msgCounter-- && VexMessenger::v_messenger->readDataMessage(messageBuffer, messageLen, 0))
+        {
             processMessage(messageBuffer, messageLen);
         }
     }
 
-	int targetX = goalConst[0];
-	int targetY = goalConst[1];
-	int targetW = goalConst[2];
-	int targetH = goalConst[3];
+    int targetX = goalConst[0];
+    int targetY = goalConst[1];
+    int targetW = goalConst[2];
+    int targetH = goalConst[3];
 
-    if(targetX == 0 && targetY == 0){
-		// no goal
+    if (targetX == 0 && targetY == 0)
+    {
+        // no goal
         return false;
     }
-
-    
-
 }

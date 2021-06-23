@@ -1,5 +1,8 @@
 #include "spencerPID.h"
 
+#include "vexMessenger.h"
+#include "vexController.h"
+
 enum class VexColor{
     ANY = -1,
     NONE = 0,
@@ -45,7 +48,7 @@ public:
     int center_y;
     int h;
     int w;
-}   
+};
 
 // class resenting a ball target
 class VisionBall{
@@ -53,7 +56,7 @@ public:
     int ball_x;
     int ball_y;
     int radius;
-}
+};
 
 // functions supporting programming skills:
 

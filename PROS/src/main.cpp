@@ -18,8 +18,8 @@ pros::Imu IMU(IMU_PORT);
 
 #ifdef ROBOT_TARGET_24
 // These need to be recalibrated
-// #define CV_X_TARGET 270
-// #define CV_H_TARGET 25
+#define CV_X_TARGET 270
+#define CV_H_TARGET 25
 #endif //ROBOT_TARGET_24
 
 #ifdef ROBOT_TARGET_15
@@ -247,17 +247,17 @@ void opcontrol() {
 				autoScore();
 			}
 
-#ifdef DRIVER_AARON
-			int32_t arcade_y = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
-			int32_t arcade_x = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
-			arcadeDrive(arcade_x, arcade_y, !triedAuto);
-#endif
 #ifdef DRIVER_HUMZA
 			int32_t left_y = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
 			int32_t right_y = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y);
 			tankDrive(left_y, right_y, !triedAuto);
-#endif
+#else 
+			int32_t arcade_y = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
+			int32_t arcade_x = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
+			arcadeDrive(arcade_x, arcade_y, !triedAuto);
+#endif // DRIVER_HUMZA
 
+#ifndef DRIVER_TRENT 
 			if(master.get_digital(pros::E_CONTROLLER_DIGITAL_R1)){
 				updateMotorGroup(intake, MAX_ROTATION_INTENSITY);
 			}else if(master.get_digital(pros::E_CONTROLLER_DIGITAL_L1)){
@@ -292,7 +292,53 @@ void opcontrol() {
 				//rotate right 90
 				SpencerPID::rotateDegrees(-90);
 			}
+
+#else // DRIVER_TRENT
+		int mask = 7;
+
+		// updateMotorGroup(topRollers, -0);
+		// updateMotorGroup(rollers, -0);
+		// updateMotorGroup(intake, -0);
+
+		if(master.get_digital(pros::E_CONTROLLER_DIGITAL_L2)){
+			updateMotorGroup(topRollers, -MAX_ROTATION_INTENSITY);
+			updateMotorGroup(rollers, -MAX_ROTATION_INTENSITY);
+			mask &= 1;
 		}
+
+		if(master.get_digital(pros::E_CONTROLLER_DIGITAL_R2)){
+			updateMotorGroup(topRollers, -MAX_ROTATION_INTENSITY);
+			updateMotorGroup(rollers, -MAX_ROTATION_INTENSITY);
+			updateMotorGroup(intake, -MAX_ROTATION_INTENSITY);
+			mask &= 0;
+		}
+
+		if(master.get_digital(pros::E_CONTROLLER_DIGITAL_R1)){
+			updateMotorGroup(intake, MAX_ROTATION_INTENSITY);
+			updateMotorGroup(rollers, MAX_ROTATION_INTENSITY);
+			updateMotorGroup(topRollers, -MAX_ROTATION_INTENSITY*.5);
+
+			mask &= 0;
+		}
+
+		if(master.get_digital(pros::E_CONTROLLER_DIGITAL_L1)){
+			updateMotorGroup(rollers, MAX_ROTATION_INTENSITY);
+			updateMotorGroup(topRollers, MAX_ROTATION_INTENSITY);
+
+			mask &= 1;
+		}
+
+		if(mask & 1){
+			updateMotorGroup(intake, 0);
+		}
+		if(mask & 2){
+			updateMotorGroup(rollers, 0);
+		}
+		if(mask & 4){
+			updateMotorGroup(topRollers, 0);
+		}
+#endif // DRIVER_TRENT
+		} // if controller is connected
 
 		SpencerPID::updatePID();
 

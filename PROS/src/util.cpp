@@ -29,20 +29,21 @@ void arcadeDrive(int32_t x, int32_t y, const bool force){
         return;
     }
 
-    if(y == 0){
-        updateDrive(x, -x);
-        return;
-    }else if(x == 0){
-        updateDrive(y, y);
-        return;
-    }
+    // if(y == 0){
+    //     updateDrive(x, -x);
+    //     return;
+    // }else if(x == 0){
+    //     updateDrive(y, y);
+    //     return;
+    // }
 
     int32_t tank_left = y + x;
     int32_t tank_right = y + -x;
+    updateDrive(tank_left, tank_right);
 
-    int32_t m = std::max(std::abs(tank_left), std::abs(tank_right));
+    // int32_t m = std::max(std::abs(tank_left), std::abs(tank_right));
 
-    updateDrive(tank_left / m, tank_right / m);
+    // updateDrive(tank_left / m, tank_right / m);
 }
 
 void tankDrive(int32_t x, int32_t y, const bool force){
