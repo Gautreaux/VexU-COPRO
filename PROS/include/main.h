@@ -65,9 +65,9 @@ extern "C" {
 #endif
 void autonomous(void);
 void initialize(void);
-void disabled(void);
+[[noreturn]] void disabled(void);
 void competition_initialize(void);
-void opcontrol(void);
+[[noreturn]] void opcontrol(void);
 #ifdef __cplusplus
 }
 #endif
