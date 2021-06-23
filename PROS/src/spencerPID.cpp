@@ -37,6 +37,10 @@ namespace SpencerPID{
         pidStartTime = pros::millis();
     }
 
+    void driveStraightInches(const double inches){
+        //TODO
+    }
+
     void updatePID(void){
         if(!pidRunning){
             return;

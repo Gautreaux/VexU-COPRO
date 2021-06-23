@@ -23,6 +23,8 @@ void waitPIDFinish(void);
 // positive is CCW
 void rotateDegrees(const double degrees);
 
+void driveStraightInches(const double inches);
+
 // called to update the PID loop
 void updatePID(void);
 } // namespace SpencerPID

@@ -4,6 +4,7 @@
 #include "vexMessenger.h"
 #include "util.h"
 #include "spencerPID.h"
+#include "vexBehavior.h"
 
 /**
  * Runs initialization code. This occurs as soon as the program is started.
