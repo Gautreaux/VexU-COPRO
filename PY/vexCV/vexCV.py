@@ -64,7 +64,7 @@ def connectCamera(camera_details):
     if isWebcam:
         cap = cv.VideoCapture(camera, cv.CAP_DSHOW)
         # print(cap.get(cv.CAP_PROP_EXPOSURE))
-        cap.set(cv.CAP_PROP_EXPOSURE, -3) 
+        cap.set(cv.CAP_PROP_EXPOSURE, -4) 
     else:
         cap = cv.VideoCapture(camera)
     print("Camera Connected")
@@ -442,68 +442,56 @@ def findGoals(f, frame_to_annotate, q, run_sharpen):
 def findBalls(f, frame_to_annotate, q):
     low_hsv = cv.cvtColor(f, cv.COLOR_BGR2HSV)
 
-    hsv_h, hsv_s, _ = cv.split(low_hsv)
+    blue_h_vals = cv.inRange(low_hsv, np.array([100,100,0]), np.array([140,255,255]))
+    red1 = cv.inRange(low_hsv, np.array([0,100,0]), np.array([20,255,255]))
+    red2 = cv.inRange(low_hsv, np.array([160,100,0]), np.array([180,255,255]))
+    red_h_vals = np.bitwise_or(red1, red2)
 
-
-    blur = cv.medianBlur(hsv_s, 5)
-    blur_h = cv.medianBlur(hsv_h, 5)
-
-    _, thresh = cv.threshold(blur, 180, 255, 0)
-    contours, _ = cv.findContours(thresh, cv.RETR_LIST, cv.CHAIN_APPROX_NONE)
+    red_cont, _ = cv.findContours(red_h_vals, cv.RETR_LIST, cv.CHAIN_APPROX_NONE)
+    blue_cont, _ = cv.findContours(blue_h_vals, cv.RETR_LIST, cv.CHAIN_APPROX_NONE)
 
     ballLocations = []
 
-    for c in contours:
-        # cv.drawContours(frame_to_annotate, [c], 0, (0, 255, 0), 3)
-        # continue
+    # cv.drawContours(frame_to_annotate, blue_cont, -1, (225, 128, 0), 3)
+    # cv.drawContours(frame_to_annotate, red_cont, -1, (0, 128, 255), 3)
 
-        actualArea = cv.contourArea(c)
-        if(actualArea < 4096):
-            # too small ( < 32x32 px)
-            continue
 
-        x,y,w,h = cv.boundingRect(c)
-
-        # height_ratio = (w/h)
-        # if abs(height_ratio - 1) > .5:
-        #     # wrong shape
-        #     continue
-
-        # pixels in contour to rectangle size
-        #   effectively, holey-ness and regularness check
-        fullness_ratio = actualArea/(w*h)
-        if fullness_ratio < .50:
-            # too sparse
-            continue
-
-        c_x = int(x+w/2)
-        c_y = int(y+h/2)
-        c_r = int((w + h) / 4)
-
-        mask = np.zeros(blur_h.shape, dtype=np.uint8)
-        cv.drawContours(mask, [c], -1, (255), -1)
-
-        # mean, stddev = cv.meanStdDev(blur_h, mask=mask)
-        # print(f"{mean} {stddev}")
-
-        hist = cv.calcHist([hsv_h], [0], mask, [8], [0,180])
-        hist_score = (hist[0] + hist[-1]) / sum(hist)
-
-        # print(f"{hist} {hist_score}")
-        # showImageBlock(
-        #     [("mask", mask)]
-        # )
-
-        # color = BALL_COLOR_RED if crop.std() > 40 else BALL_COLOR_BLUE
-        color = BALL_COLOR_RED if hist_score > .50 else BALL_COLOR_BLUE
-        # color = crop.mean()
-
-        ballLocations.append((c_x, c_y, c_r, color))
-        if frame_to_annotate is not None:
+    for color, contours in zip([BALL_COLOR_RED, BALL_COLOR_BLUE], [red_cont, blue_cont]):
+        draw_color = ((255,1828,0) if color == BALL_COLOR_RED else (0,128,255))
+        
+        for c in contours:
             # cv.drawContours(frame_to_annotate, [c], 0, (0, 255, 0), 3)
-            # print(ballLocations[-1])
-            draw_color =  (255, 0,0) if color == BALL_COLOR_BLUE else (0, 0, 255)
-            cv.circle(frame_to_annotate, ballLocations[-1][:2], ballLocations[-1][2], draw_color, 2)
+            # continue
+
+            actualArea = cv.contourArea(c)
+            if(actualArea < 4096):
+                # too small ( < 32x32 px)
+                continue
+
+            x,y,w,h = cv.boundingRect(c)
+
+            # height_ratio = (w/h)
+            # if abs(height_ratio - 1) > .5:
+            #     # wrong shape
+            #     continue
+
+            # pixels in contour to rectangle size
+            #   effectively, holey-ness and regularness check
+            fullness_ratio = actualArea/(w*h)
+            if fullness_ratio < .50:
+                # too sparse
+                continue
+
+            c_x = int(x+w/2)
+            c_y = int(y+h/2)
+            c_r = int((w + h) / 4)
+
+            ballLocations.append((c_x, c_y, c_r, color))
+
+            if frame_to_annotate is not None:
+                #  cv.drawContours(frame_to_annotate, [c], 0, draw_color, 3)
+                # print(ballLocations[-1])
+                cv.circle(frame_to_annotate, ballLocations[-1][:2], ballLocations[-1][2], draw_color, 2)
 
     for ball in ballLocations:
         q.put((False, ball))

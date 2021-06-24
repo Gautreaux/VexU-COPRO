@@ -1,6 +1,6 @@
-from functools import partial
 import math
 import itertools
+import time
 
 isSkills = True
 
@@ -9,7 +9,9 @@ EMPTY = 0
 RED = 1
 BLUE = 2
 
-# time constants
+# constants
+BALL_RESOLVER_DIST_BACKOFF = 18
+GOAL_RESOLVER_DIST_BACKOFF = 12
 
 
 if isSkills:
@@ -60,6 +62,7 @@ else:
 
 from plannerPath import scriptStack
 
+hasError = False
 
 def stateAppend(startState, toAppend):
     if(startState[0] == EMPTY):
@@ -128,28 +131,40 @@ def turnMoveTo(currentPos, currentOrient, targetPos):
         except ZeroDivisionError:
             targetRotation = (math.pi/2) if vectorToTarget[1] > 0 else (-math.pi/2)
 
-        rotationAmount_left = targetRotation - (currentOrient if currentOrient < targetRotation else (currentOrient - 2*math.pi))
-        rotationAmount_right = -targetRotation + (currentOrient if currentOrient > targetRotation else (currentOrient + 2*math.pi))
-
-        if rotationAmount_left < rotationAmount_right:
-            rot_amt = rotationAmount_left
+        if abs(currentOrient - targetRotation) < .0001:
+            rot_amt = 0
         else:
-            rot_amt = -rotationAmount_right
+            rotationAmount_left = targetRotation - (currentOrient if currentOrient < targetRotation else (currentOrient - 2*math.pi))
+            rotationAmount_right = -targetRotation + (currentOrient if currentOrient > targetRotation else (currentOrient + 2*math.pi))
+
+            if rotationAmount_left < rotationAmount_right:
+                rot_amt = rotationAmount_left
+            else:
+                rot_amt = -rotationAmount_right
 
         # now amount to drive
         distToTarget = ((targetPos[0] - currentPos[0])**2 + (targetPos[1] - currentPos[1])**2)**.5
+
+        if(abs(rot_amt) > math.pi):
+            print(f"Error on rotation amount: {rotationAmount_left} {rotationAmount_right} --> {rot_amt}")
+            print(f"  {currentOrient} -> {targetRotation} via {vectorToTarget}")
+            assert(abs(rot_amt) <= math.pi)
         
         return (rot_amt, distToTarget, targetRotation)
 
 validateScript(scriptStack)
 
+# define stating position
 current_balls = (RED, EMPTY, EMPTY)
-current_pos_orient = (72, 16.5, -math.pi)
+current_pos_orient = (72, 16.5, -math.pi/2)
 
 firstPass = []
-
-for command in scriptStack:
+# build the uninformed commands for the robot
+#   i.e. the dead reckoning approach
+for idx, command in enumerate(scriptStack):
     tokens = command.split(" ")
+
+    firstPass.append(f"// {command}")
 
     if tokens[0] == "grab" or tokens[0] == "cycle":
         # determine rotation
@@ -167,6 +182,13 @@ for command in scriptStack:
         else:
             firstPass.append(f"cycle")
 
+            try:
+                if scriptStack[idx + 1]:
+                    # there is another command
+                    firstPass.append(f"drive -12")
+            except IndexError:
+                pass
+
         current_pos_orient = (ballPos[0], ballPos[1], newOrient)
         current_balls = stateAppend(current_balls, RED)
     elif tokens[0] == "eject" and tokens[1] == "SAFE":
@@ -175,8 +197,93 @@ for command in scriptStack:
         distToGoals = list(map(lambda x: ((x[0] - current_pos_orient[0])**2 + (x[1] - current_pos_orient[1])**2)**.5, goalLocations.values()))
 
         if min(distToGoals) < 24:
-            firstPass.append(f"dive {round(24 - min(distToGoals), 3)}")
+            firstPass.append(f"drive -{round(24 - min(distToGoals), 3)}")
     else:
         firstPass.append(f"not_implemented {tokens}")
+        hasError = True
+firstPass.append("stop")
+print(f"firstpass: {firstPass}")
 
-print(firstPass)
+secondPass = []
+# augment the first pass items with a 
+for idx, value in enumerate(firstPass):
+    tokens = value.split(" ")
+    if tokens[0] == "//":
+        secondPass.append(value)
+        continue
+    elif tokens[0] == "stop":
+        secondPass.append(value)
+        continue
+    elif tokens[0] == "drive":
+        i = float(tokens[1])
+        tokens_next = firstPass[idx + 1].split(" ")
+        if tokens_next[0] == "intake":
+            backoff = BALL_RESOLVER_DIST_BACKOFF
+        elif tokens_next[0] == "cycle":
+            backoff = GOAL_RESOLVER_DIST_BACKOFF
+        else:
+            secondPass.append(value)
+            continue
+        
+        if backoff > i:
+            print(f"Warning: drive distance {i} less than desired backoff {backoff}.\n  The drive command will be removed.")
+            continue
+        secondPass.append(f"{tokens[0]} {round(i - backoff, 3)}")
+    elif tokens[0] == "cycle":
+        secondPass.append("cv_cycle")
+    elif tokens[0] == "intake":
+        secondPass.append("cv_intake")
+    elif tokens[0] == "turn":
+        if round(float(tokens[1]), 3) != 0:
+            secondPass.append(f"turn_deg {round(math.degrees(float(tokens[1])), 3)}")
+    else:
+        print(f"Unknown command {value}")
+        hasError = True
+
+print(secondPass)
+
+bindings = {
+    "cv_cycle" : (lambda: "cvCycle();"),
+    "cv_intake" : (lambda: "cvIntake();"),
+    "drive" : (lambda x: f"driveInches({x});"),
+    "turn_deg" : (lambda x: f"turnDegrees({x});"),
+    "stop" : (lambda: "stopAll(); return;"),
+    "spit" : (lambda: "spitBalls();")
+}
+
+cpp_ready = []
+
+for cmd in secondPass:
+    tokens = cmd.split(" ")
+    try:
+        try:
+            cpp_ready.append(
+                bindings[tokens[0]](tokens[1])
+            )
+        except IndexError:
+            cpp_ready.append(
+                bindings[tokens[0]]()
+            )
+    except KeyError:
+        if tokens[0] == '//':
+            cpp_ready.append(cmd)
+        else:
+            print(f"Command with no binding: {tokens[0]}")
+            hasError = True
+
+print(cpp_ready)
+
+if hasError:
+    print("Warning: hasError is true, some things may be incorrect")
+    msg = "// WARNING: generated with errors."
+    cpp_ready.append(msg)
+    cpp_ready = [msg, *cpp_ready]
+
+
+with open("scriptOut.cpp", 'w') as outfile:
+    print(f"// autogenerated at {round(time.time())}", file=outfile)
+    print("void driverSkills(void) {", file=outfile)
+    for line in cpp_ready:
+        print("  ", end="", file=outfile)
+        print(line, file=outfile)
+    print("}", file=outfile)

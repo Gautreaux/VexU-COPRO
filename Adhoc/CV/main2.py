@@ -24,7 +24,8 @@ if __name__ == "__main__":
     # cameras[1] = (2, True)
 
     cameras[0] = None
-    cameras[1] =  (os.path.abspath(__file__).rpartition('\\')[0] + "/dev/ballsForColor.avi", False)
+    # cameras[1] =  (os.path.abspath(__file__).rpartition('\\')[0] + "/dev/ballsForColor.avi", False)
+    cameras[1] = (1, True)
 
     args = {
         "showAnnotated" : True,
