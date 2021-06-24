@@ -63,6 +63,7 @@ else:
 from plannerPath import scriptStack
 
 hasError = False
+injectDEV = True
 
 def stateAppend(startState, toAppend):
     if(startState[0] == EMPTY):
@@ -164,7 +165,11 @@ firstPass = []
 for idx, command in enumerate(scriptStack):
     tokens = command.split(" ")
 
+    firstPass.append(f"// ----------------")
     firstPass.append(f"// {command}")
+
+    if injectDEV:
+        firstPass.append("DEV")
 
     if tokens[0] == "grab" or tokens[0] == "cycle":
         # determine rotation
@@ -202,7 +207,7 @@ for idx, command in enumerate(scriptStack):
         firstPass.append(f"not_implemented {tokens}")
         hasError = True
 firstPass.append("stop")
-print(f"firstpass: {firstPass}")
+# print(f"firstpass: {firstPass}")
 
 secondPass = []
 # augment the first pass items with a 
@@ -210,6 +215,9 @@ for idx, value in enumerate(firstPass):
     tokens = value.split(" ")
     if tokens[0] == "//":
         secondPass.append(value)
+        continue
+    elif tokens[0] == "DEV":
+        secondPass.append("DEV")
         continue
     elif tokens[0] == "stop":
         secondPass.append(value)
@@ -236,19 +244,23 @@ for idx, value in enumerate(firstPass):
     elif tokens[0] == "turn":
         if round(float(tokens[1]), 3) != 0:
             secondPass.append(f"turn_deg {round(math.degrees(float(tokens[1])), 3)}")
+    elif tokens[0] == "eject":
+        secondPass.append("eject")
     else:
         print(f"Unknown command {value}")
         hasError = True
 
-print(secondPass)
+# print(secondPass)
 
 bindings = {
     "cv_cycle" : (lambda: "cvCycle();"),
     "cv_intake" : (lambda: "cvIntake();"),
     "drive" : (lambda x: f"driveInches({x});"),
     "turn_deg" : (lambda x: f"turnDegrees({x});"),
-    "stop" : (lambda: "stopAll(); return;"),
-    "spit" : (lambda: "spitBalls();")
+    "stop" : (lambda: "stopAll();\n  return;"),
+    "spit" : (lambda: "spitBalls();"),
+    "DEV" : (lambda: "\n  // DEV CONTROLS\n  pros::delay(1000);\n // DEV CONTROLS\n"),
+    "eject" : (lambda: "ejectAll();")
 }
 
 cpp_ready = []
@@ -271,7 +283,7 @@ for cmd in secondPass:
             print(f"Command with no binding: {tokens[0]}")
             hasError = True
 
-print(cpp_ready)
+# print(cpp_ready)
 
 if hasError:
     print("Warning: hasError is true, some things may be incorrect")

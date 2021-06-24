@@ -434,6 +434,9 @@ void opcontrol() {
 
 	int32_t ctr = 50000;
 
+	int32_t lastDrivePower_right = 0;
+	int32_t lastDrivePower_left = 0;
+
 	while(true){
 		loop_counter++;
 		pros::lcd::print(LCD_LOCAL_STATUS, "Loop %d checkpoint A", loop_counter);
@@ -476,7 +479,11 @@ void opcontrol() {
 #ifdef DRIVER_HUMZA
 			int32_t left_y = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
 			int32_t right_y = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_Y);
+			left_y = std::max(left_y, lastDrivePower_left - 10);
+			right_y = std::max(right_y, lastDrivePower_right - 10);
 			tankDrive(left_y, right_y, !triedAuto);
+			lastDrivePower_right = right_y;
+			lastDrivePower_left = left_y;
 #else 
 			int32_t arcade_y = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
 			int32_t arcade_x = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
