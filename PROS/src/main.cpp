@@ -1,4 +1,6 @@
 #include "main.h"
+
+#include <utility>
 #include "vexController.h"
 // #include "vexSerial.h"
 #include "vexMessenger.h"
@@ -13,11 +15,167 @@
  * to keep execution time for this mode under a few seconds.
  */
 pros::Imu IMU(IMU_PORT);
+double last_target = 0;
+double last_current = 0;
+
+void run_pid(
+        std::function<double()> current_function,
+        const std::function<void(double)>& apply_function,
+        double target,
+        double p,
+        double i,
+        double d,
+        double max_i,
+        double threshold,
+        uint32_t count_needed
+){
+    last_target = target;
+    last_current = current_function();
+    SpencerPID::PID pid{target, std::move(current_function), p, i, d, max_i};
+    uint32_t count = 0;
+    while (count < count_needed){
+        auto out = pid.run();
+        if (std::abs(out.error) < threshold){
+            count++;
+        }
+        else{
+            count = 0;
+        }
+        apply_function(out.power);
+        pros::delay(5);
+    }
+    apply_function(0);
+}
+
+#ifdef ROBOT_TARGET_15
+constexpr double TURN_P = 10;
+constexpr double TURN_I = 1;
+constexpr double TURN_D = 0.5;
+constexpr double TURN_I_MAX = 50;
+
+constexpr double DRIVE_P = 50;
+constexpr double DRIVE_I = 0;
+constexpr double DRIVE_D = 5;
+constexpr double DRIVE_I_MAX = 50;
+
+constexpr double DRIVE_MATCH_P = 2;
+constexpr double DRIVE_MATCH_I = 0;
+constexpr double DRIVE_MATCH_D = 0;
+constexpr double DRIVE_MATCH_MAX_I = 50;
+#endif
+#ifdef ROBOT_TARGET_24
+constexpr double TURN_P = 5;
+constexpr double TURN_I = 0.5;
+constexpr double TURN_D = 3;
+constexpr double TURN_I_MAX = 50;
+
+constexpr double DRIVE_P = 5;
+constexpr double DRIVE_I = 0.5;
+constexpr double DRIVE_D = 3;
+constexpr double DRIVE_I_MAX = 50;
+
+constexpr double DRIVE_MATCH_P = 5;
+constexpr double DRIVE_MATCH_I = 0.5;
+constexpr double DRIVE_MATCH_D = 3;
+constexpr double DRIVE_MATCH_MAX_I = 50;
+#endif
+
+void turn(double degrees, Motorgroup& left_drive, Motorgroup& right_drive){
+    const auto start = IMU.get_rotation();
+    const auto target = start + degrees;
+    run_pid(
+            [](){return IMU.get_rotation();},
+            [left_drive, right_drive](double in_val){
+                for(auto& motor : left_drive){
+                    motor = -(int32_t)in_val;
+                }
+                for(auto& motor: right_drive){
+                    motor = (int32_t)in_val;
+                }
+            },
+            target,
+            TURN_P, TURN_I, TURN_D, TURN_I_MAX, 3, 20);
+}
+
+void turn_to_angle(double angle, Motorgroup& left_drive, Motorgroup& right_drive){
+    run_pid(
+            [](){return IMU.get_heading();},
+            [left_drive, right_drive](double in_val){
+                for(auto& motor : left_drive){
+                    motor = -(int32_t)in_val;
+                }
+                for(auto& motor: right_drive){
+                    motor = (int32_t)in_val;
+                }
+            },
+            angle,
+            TURN_P, TURN_I, TURN_D, TURN_I_MAX, 3, 20);
+}
+
+void drive_for_distance(int32_t distance, Motorgroup& left_drive, Motorgroup& right_drive){
+    const auto start_angle = IMU.get_rotation();
+    const auto left_start = left_drive[0].get_raw_position(nullptr);
+    const auto right_start = right_drive[0].get_raw_position(nullptr);
+
+    SpencerPID::PID left_distance_pid{
+            (double)left_start + distance,
+            [&left_drive](){
+                return left_drive[0].get_raw_position(nullptr);
+            },
+            DRIVE_P, DRIVE_I, DRIVE_D, DRIVE_I_MAX
+    };
+    SpencerPID::PID right_distance_pid{
+            (double)right_start + distance,
+            [&right_drive](){
+                return right_drive[0].get_raw_position(nullptr);
+            },
+            DRIVE_P, DRIVE_I, DRIVE_D, DRIVE_I_MAX
+    };
+    SpencerPID::PID match_pid{
+            start_angle,
+            [](){
+                return IMU.get_rotation();
+            },
+            DRIVE_MATCH_P, DRIVE_MATCH_I, DRIVE_MATCH_D, DRIVE_MATCH_MAX_I
+    };
+
+    uint32_t count = 0;
+
+    constexpr double forward_backward_tolerance = 50;
+
+    while(count < 100){
+        auto left_result = left_distance_pid.run();
+        auto right_result = right_distance_pid.run();
+        auto match_result = match_pid.run();
+
+        if(
+                left_result.error < forward_backward_tolerance
+                && right_result.error < forward_backward_tolerance
+                && match_result.error < 3){
+            count++;
+        }
+        else{
+            count = 0;
+        }
+
+        auto left = std::max(std::min(left_result.power, 127.0), -127.0) + std::max(std::min(match_result.power, 127.0), -127.0);
+        auto right = std::max(std::min(right_result.power, 127.0), -127.0) - std::max(std::min(match_result.power, 127.0), -127.0);
+
+        for(auto& motor : left_drive){
+            motor = -(int32_t)left;
+        }
+        for(auto& motor : right_drive){
+            motor = -(int32_t)right;
+        }
+
+        pros::delay(5);
+    }
+}
 
 #define CV_DEADZONE 60
 
 #ifdef ROBOT_TARGET_24
-#define CV_X_TARGET 315
+#define CV_X_TARGET 315.0
 #define CV_H_TARGET 110
 #endif //ROBOT_TARGET_24
 
@@ -41,7 +199,7 @@ int ballConst[4];
 
 //TODO - probably refactor
 // auto score on the goal
-void autoScore(void){
+void autoScore(){
 	int targetX = goalConst[0];
 	int targetY = goalConst[1];
 	int targetW = goalConst[2];
@@ -65,11 +223,9 @@ void autoScore(void){
 		updateMotorGroup(rollers, MAX_ROTATION_INTENSITY);
 		pros::lcd::print(LCD_AUTO_SCORE_STATUS, "SCORE %d %d %d %d", targetX, targetY, targetX, targetH);
 	}
-	if(abs(targetX - CV_X_TARGET) > CV_DEADZONE){
+	if(std::abs(targetX - CV_X_TARGET) > CV_DEADZONE){
 		//turn
-		if(!SpencerPID::isPIDRunning()){
-			SpencerPID::rotateDegrees((CV_X_TARGET - targetX) / CV_PX_TO_DEG);
-		}
+        turn((CV_X_TARGET - targetX) / CV_PX_TO_DEG, leftDrive, rightDrive);
 		pros::lcd::print(LCD_AUTO_SCORE_STATUS, "TURN %d %d %d %d", targetX, targetY, targetX, targetH);
 	}else{
 		//we know we are aligned, but too far back
@@ -126,6 +282,27 @@ void initialize() {
 		pros::delay(10);
 	}while(IMU.is_calibrating());
 
+	pros::Task{
+	    [](){
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "EndlessLoop"
+            while(true){
+                double right_max = 0;
+                double left_max = 0;
+                for(auto& motor : rightDrive){
+                    right_max = std::max(right_max, motor.get_temperature());
+                }
+                for(auto& motor : leftDrive){
+                    left_max = std::max(left_max, motor.get_temperature());
+                }
+                pros::lcd::print(LCD_OPEN_6, "IMU: %.3f", IMU.get_rotation());
+                pros::lcd::print(LCD_OPEN_7, "L/R %.1f/%.1f", left_max, right_max);
+                pros::delay(50);
+            }
+#pragma clang diagnostic pop
+        }
+	};
+
 	// if(VexMessenger::v_messenger->try_connect(3000)){
 	// 	pros::lcd::print(LCD_MESSENGER_CONNECTED, "Messenger Connected.");
 	// }else{
@@ -145,7 +322,7 @@ void initialize() {
  * the VEX Competition Switch, following either autonomous or opcontrol. When
  * the robot is enabled, this task will exit.
  */
-void disabled() {
+[[noreturn]] void disabled() {
 	// stores the length of received messages
 	uint8_t messageLen;
 
@@ -301,13 +478,19 @@ void opcontrol() {
 				updateMotorGroup(rollers, 0);
 			}
 
-			// if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT)){
-			// 	//rotate left 90
-			// 	SpencerPID::rotateDegrees(15);
-			// }else if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)){
-			// 	//rotate right 90
-			// 	SpencerPID::rotateDegrees(-15);
-			// }
+			if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT)){
+				//rotate left 90
+                turn(-90, leftDrive, rightDrive);
+			}else if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)){
+                //rotate right 90
+                turn(90, leftDrive, rightDrive);
+            }
+			else if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_UP)){
+                drive_for_distance(1000, leftDrive, rightDrive);
+            }
+			else if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_DOWN)){
+                drive_for_distance(-1000, leftDrive, rightDrive);
+            }
 
 #else // DRIVER_TRENT
 		int mask = 7;
@@ -355,8 +538,6 @@ void opcontrol() {
 		}
 #endif // DRIVER_TRENT
 		} // if controller is connected
-
-		SpencerPID::updatePID();
 
 		pros::lcd::print(LCD_LOCAL_STATUS, "Loop %d checkpoint Z", loop_counter);
 		pros::delay(10);
