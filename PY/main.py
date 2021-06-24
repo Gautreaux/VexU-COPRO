@@ -15,7 +15,7 @@ def main():
     print("Messenger Connected")
 
     cv_args = {
-        "showAnnotated": True,
+        "showAnnotated": False,
         "sharpen": False,
     }
 
@@ -32,7 +32,7 @@ def main():
     # )
 
     cameras[0] = (0, True)
-    cameras[1] = (2, True)
+    cameras[1] = (1, True)
 
     g_p, b_p, q = vexCV.cv_mp(cv_args, cameras)
 
@@ -44,10 +44,10 @@ def main():
             # print(f"outbound message: {isGoal} {data}")
             if isGoal:
                 vexAction.VEX_sendGoalTarget(data)
-                # print(data)
+                print(f"goal_sending{data}")
             else:
                 vexAction.VEX_sendBallTarget(data)
-                print(data)
+                print(f"ball_sending{data}")
     except KeyboardInterrupt:
         print("Stopping processes...")
         if g_p:

@@ -182,6 +182,9 @@ void drive_for_distance(int32_t distance, Motorgroup& left_drive, Motorgroup& ri
 #ifdef ROBOT_TARGET_15
 #define CV_X_TARGET 330
 #define CV_H_TARGET 110
+
+#define CV_BALL_X_TARGET 330
+#define CV_BALL_INTAKE_START_RAD 150
 #endif //ROBOT_TARGET_15
 
 #ifdef ROBOT_TARGET_DEV
@@ -192,7 +195,7 @@ void drive_for_distance(int32_t distance, Motorgroup& left_drive, Motorgroup& ri
 //move power between 1 and 127 (inclusive)
 #define CV_MOVE_POWER 96
 
-#define CV_PX_TO_DEG 25
+#define CV_PX_TO_DEG 25.0
 
 int goalConst[4];
 int ballConst[4];
@@ -225,7 +228,7 @@ void autoScore(){
 	}
 	if(std::abs(targetX - CV_X_TARGET) > CV_DEADZONE){
 		//turn
-        turn((CV_X_TARGET - targetX) / CV_PX_TO_DEG, leftDrive, rightDrive);
+        turn(-(CV_X_TARGET - targetX) / CV_PX_TO_DEG, leftDrive, rightDrive);
 		pros::lcd::print(LCD_AUTO_SCORE_STATUS, "TURN %d %d %d %d", targetX, targetY, targetX, targetH);
 	}else{
 		//we know we are aligned, but too far back
@@ -242,7 +245,37 @@ void autoPickup(){
 	int targetR = goalConst[2];
 	// int targetC = goalConst[3];
 
-	
+	// pros::lcd::print(0\LCD_AUTO_SCORE_STATUS, "Target: %04d %04d %04d", targetX, targetY, targetR);
+
+	if(targetX == 0 && targetY == 0){
+		// no goal
+		//	halt and try to resolve
+		updateMotorGroup(leftDrive, 0);
+		updateMotorGroup(rightDrive, 0);
+		pros::lcd::print(LCD_AUTO_SCORE_STATUS, "ball_SEARCHING");
+		return;
+	}
+
+	if(targetR > CV_BALL_INTAKE_START_RAD){
+		updateMotorGroup(intake, MAX_ROTATION_INTENSITY);
+		updateMotorGroup(rollers, MAX_ROTATION_INTENSITY);
+	}else{
+		updateMotorGroup(intake, 0);
+		updateMotorGroup(rollers, 0);
+	}
+
+	if(std::abs(targetX - CV_BALL_X_TARGET) > CV_DEADZONE){
+		//turn
+		double turnAmt = -(CV_BALL_X_TARGET - targetX) / CV_PX_TO_DEG;
+        turn(turnAmt, leftDrive, rightDrive);
+		pros::lcd::print(LCD_AUTO_SCORE_STATUS, "BALL_TURN %d %d %d --> %.03f (%03d)", targetX, targetY, targetR, turnAmt, (CV_BALL_X_TARGET - targetX));
+	}else{
+		//we know we are aligned, but too far back
+		//	so drive forward
+		updateMotorGroup(leftDrive, CV_MOVE_POWER);
+		updateMotorGroup(rightDrive, CV_MOVE_POWER);
+		pros::lcd::print(LCD_AUTO_SCORE_STATUS, "BALLA_FORWARD %d %d %d", targetX, targetY, targetR);
+	}
 }
 
 void initialize() {

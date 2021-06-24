@@ -25,6 +25,7 @@ FILTER_LAST_TTL = 1
 
 BALL_COLOR_BLUE = 0
 BALL_COLOR_RED = 1
+BALL_COLOR_ANY = -1
 
 # show an image and block
 #   do not put into a non-debug loop
@@ -261,148 +262,6 @@ def cvSetup(camera_details, frames_to_skip = 0):
 
     return cap
 
-def cvStep(show_annotated : bool = False):
-    raise NotImplemented("CV step deprecated")
-    r, f = cv_capture[0].read()
-    r2, f2 = cv_capture[1].read()
-
-    # print(f"r {r}, r2: {r2}")
-
-    if show_annotated:
-        frame_to_annotate = f.copy()
-        frame_to_annotate_2 = f2.copy()
-    else:
-        frame_to_annotate = None
-        frame_to_annotate_2 = None
-
-    try:
-        if not r:
-            # no new frame
-            return
-        group_center = getBestGoalPosition(f, frame_to_annotate)
-
-        if group_center is None:
-            # f_hsv = cv.cvtColor(f, cv.COLOR_BGR2HSV)
-
-            # ball_color = isBallInImage(f_hsv)
-            # if ball_color:
-            #     print(f"Ball {ball_color} in image")
-            #     return
-            f_gray = cv.cvtColor(f, cv.COLOR_BGR2GRAY)
-            if isCameraBlocked(f_gray):
-                print("CAMERA BLOCKED")
-                return
-
-        filtered = goalFilter(group_center)
-        print(f"{group_center} --> {filtered}")
-        if filtered:
-            vexAction.VEX_sendGoalTarget(filtered)
-
-
-        # try stuff for low camera
-        low_grey = cv.cvtColor(f2, cv.COLOR_BGR2GRAY)
-        low_canny = cv.Canny(low_grey, 50, 200)
-        low_hsv = cv.cvtColor(f2, cv.COLOR_BGR2HSV)
-
-        hsv_h, hsv_s, hsv_v = cv.split(low_hsv)
-
-        hsv_v_canny = cv.Canny(cv.GaussianBlur(hsv_v, (3,3), 0), 50, 200)
-        hsv_s_canny = cv.Canny(cv.GaussianBlur(hsv_s, (3,3), 0), 50, 200)
-        hsv_h_canny = cv.Canny(cv.GaussianBlur(hsv_h, (3,3), 0), 50, 200)
-
-        imgs_for_circle_detect = [
-                ("grey", low_grey),
-                ("hsv_v", hsv_v),
-                ("hsv_h", hsv_h),
-                ("hsv_s", hsv_s),
-        ]
-
-        circle_detect_out = []
-
-        # not great and slow
-        # for name,img in imgs_for_circle_detect:
-        #     img = cv.medianBlur(img,5)
-        #     cimg = cv.cvtColor(img,cv.COLOR_GRAY2BGR)
-        #     circles = cv.HoughCircles(img,cv.HOUGH_GRADIENT,1,100,
-        #                                 param1=350,param2=10,minRadius=15,maxRadius=0)
-        #     if circles is not None:
-        #         circles = np.uint16(np.around(circles))
-        #         for i in circles[0,:]:
-        #             # draw the outer circle
-        #             cv.circle(cimg,(i[0],i[1]),i[2],(0,255,0),2)
-        #             # draw the center of the circle
-        #             cv.circle(cimg,(i[0],i[1]),2,(0,0,255),3)
-
-        #     circle_detect_out.append((name, cimg))
-
-        for name, img in imgs_for_circle_detect:
-            img = cv.medianBlur(img,5)
-            cimg = cv.cvtColor(img,cv.COLOR_GRAY2BGR)
-            ret, thresh = cv.threshold(img, 100, 255, 0)
-            contours, _ = cv.findContours(thresh, cv.RETR_LIST, cv.CHAIN_APPROX_NONE)
-
-            for c in contours:
-
-                actualArea = cv.contourArea(c)
-                if(actualArea < 4096):
-                    # too small ( < 32x32 px)
-                    continue
-
-                x,y,w,h = cv.boundingRect(c)
-
-                # height_ratio = (w/h)
-                # if abs(height_ratio - 1) > .5:
-                #     # wrong shape
-                #     continue
-
-                # pixels in contour to rectangle size
-                #   effectively, holey-ness and regularness check
-                fullness_ratio = actualArea/(w*h)
-                if fullness_ratio < .50:
-                    # too sparse
-                    continue
-
-                cv.drawContours(cimg, [c], 0, (0, 255, 0), 3)
-                continue
-
-                cv.rectangle(cimg, (x,y), (x+w,y+h), (0,255,0), 7)
-
-
-
-            circle_detect_out.append((name,cimg))
-
-        imgs_raw = [
-                ("grey", low_grey),
-                ("hsv_v", hsv_v),
-                ("hsv_h", hsv_h),
-                ("hsv_s", hsv_s),
-
-                ("raw", f2),
-                ("canny", low_canny),
-                ("hsv", low_hsv),
-                ("hsv_h_canny", hsv_h_canny),
-                ("hsv_v_canny", hsv_v_canny),
-                ("hsv_s_canny", hsv_s_canny),
-        ]
-
-        imgs_raw.extend(circle_detect_out)
-
-        showImageBlock(
-            imgs_raw
-        )
-    finally:
-        if show_annotated:
-            if filter_datastore[FILTER_LAST_TTL] != MAX_NON_FRAME and filter_datastore[FILTER_LAST_TTL] and filter_datastore[FILTER_LAST_RETURNED]:
-                # draw the circle, but stale
-                cv.circle(frame_to_annotate, filter_datastore[FILTER_LAST_RETURNED][:2], 15, (0,0,255), -1)
-                cv.circle(frame_to_annotate, filter_datastore[FILTER_LAST_RETURNED][:2], 12, (255 * filter_datastore[FILTER_LAST_TTL] / (MAX_NON_FRAME),0,0), -1)
-
-            cv.namedWindow("annotated", cv.WINDOW_NORMAL)
-            cv.imshow("annotated", frame_to_annotate)
-            cv.namedWindow("annotated_2", cv.WINDOW_NORMAL)
-            cv.imshow("annotated_2", frame_to_annotate_2)
-            cv.waitKey(1)
-
 # block until the next frame occurs
 #   return the new frame
 def getNextFrameBlocking(capture):
@@ -425,7 +284,7 @@ def findGoals(f, frame_to_annotate, q, run_sharpen):
         #     return
         f_gray = cv.cvtColor(f, cv.COLOR_BGR2GRAY)
         if isCameraBlocked(f_gray):
-            print("CAMERA BLOCKED")
+            print("GOAL CAMERA BLOCKED")
             return
 
     filtered = goalFilter(group_center)
@@ -439,25 +298,34 @@ def findGoals(f, frame_to_annotate, q, run_sharpen):
             cv.circle(frame_to_annotate, filter_datastore[FILTER_LAST_RETURNED][:2], 15, (0,0,255), -1)
             cv.circle(frame_to_annotate, filter_datastore[FILTER_LAST_RETURNED][:2], 12, (255 * filter_datastore[FILTER_LAST_TTL] / (MAX_NON_FRAME),0,0), -1)
 
-def findBalls(f, frame_to_annotate, q):
+def findBalls(f, frame_to_annotate, q, color):
     low_hsv = cv.cvtColor(f, cv.COLOR_BGR2HSV)
 
-    blue_h_vals = cv.inRange(low_hsv, np.array([100,100,0]), np.array([140,255,255]))
-    red1 = cv.inRange(low_hsv, np.array([0,100,0]), np.array([20,255,255]))
-    red2 = cv.inRange(low_hsv, np.array([160,100,0]), np.array([180,255,255]))
-    red_h_vals = np.bitwise_or(red1, red2)
+    colors_found = []
+    color_contours = []
 
-    red_cont, _ = cv.findContours(red_h_vals, cv.RETR_LIST, cv.CHAIN_APPROX_NONE)
-    blue_cont, _ = cv.findContours(blue_h_vals, cv.RETR_LIST, cv.CHAIN_APPROX_NONE)
+    if color == BALL_COLOR_BLUE or color == BALL_COLOR_ANY:
+        blue_h_vals = cv.inRange(low_hsv, np.array([100,100,0]), np.array([140,255,255]))
+        blue_cont, _ = cv.findContours(blue_h_vals, cv.RETR_LIST, cv.CHAIN_APPROX_NONE)
+        
+        colors_found.append(BALL_COLOR_BLUE)
+        color_contours.append(blue_cont)
+        # cv.drawContours(frame_to_annotate, blue_cont, -1, (225, 128, 0), 3)
+
+    if color == BALL_COLOR_RED or color == BALL_COLOR_ANY:
+        red1 = cv.inRange(low_hsv, np.array([0,100,0]), np.array([20,255,255]))
+        red2 = cv.inRange(low_hsv, np.array([160,100,0]), np.array([180,255,255]))
+        red_h_vals = np.bitwise_or(red1, red2)
+        red_cont, _ = cv.findContours(red_h_vals, cv.RETR_LIST, cv.CHAIN_APPROX_NONE)
+
+        colors_found.append(BALL_COLOR_RED)
+        color_contours.append(red_cont)
+        # cv.drawContours(frame_to_annotate, red_cont, -1, (0, 128, 255), 3)
 
     ballLocations = []
 
-    # cv.drawContours(frame_to_annotate, blue_cont, -1, (225, 128, 0), 3)
-    # cv.drawContours(frame_to_annotate, red_cont, -1, (0, 128, 255), 3)
-
-
-    for color, contours in zip([BALL_COLOR_RED, BALL_COLOR_BLUE], [red_cont, blue_cont]):
-        draw_color = ((255,1828,0) if color == BALL_COLOR_RED else (0,128,255))
+    for color_n, contours in zip(colors_found, color_contours):
+        draw_color = ((255,1828,0) if color_n == BALL_COLOR_RED else (0,128,255))
         
         for c in contours:
             # cv.drawContours(frame_to_annotate, [c], 0, (0, 255, 0), 3)
@@ -486,15 +354,36 @@ def findBalls(f, frame_to_annotate, q):
             c_y = int(y+h/2)
             c_r = int((w + h) / 4)
 
-            ballLocations.append((c_x, c_y, c_r, color))
+            ballLocations.append((c_x, c_y, c_r, color_n))
 
             if frame_to_annotate is not None:
                 #  cv.drawContours(frame_to_annotate, [c], 0, draw_color, 3)
                 # print(ballLocations[-1])
                 cv.circle(frame_to_annotate, ballLocations[-1][:2], ballLocations[-1][2], draw_color, 2)
 
-    for ball in ballLocations:
-        q.put((False, ball))
+    if q:
+        for ball in ballLocations:
+            q.put((False, ball))
+        return None
+    return ballLocations
+
+def findBestBall(f, frame_to_annotate, q, color):
+    ballLocations = findBalls(f, frame_to_annotate, None, color)
+
+    # print(f"Ball Locations: {ballLocations}")
+
+    if ballLocations:
+        best_ball = max(ballLocations, key=(lambda x : x[2]))
+        # print(f"BEST BALL {best_ball}")
+        q.put((False, best_ball))
+
+        if frame_to_annotate is not None:
+            cv.circle(frame_to_annotate, best_ball[:2], best_ball[2], (0,255,0), 3)
+    else:
+        # print("NO BALLS")
+        q.put((False, (0,0,0,0)))
+
+    time.sleep(.5)
 
 # entry point for multi-processing
 def mp_entry_common(args, isGoals, camera_details, q):
@@ -522,7 +411,7 @@ def mp_entry_common(args, isGoals, camera_details, q):
             if isGoals:
                 findGoals(f, frame_to_annotate, q, run_sharpen)
             else:
-                findBalls(f, frame_to_annotate, q)
+                findBestBall(f, frame_to_annotate, q, BALL_COLOR_RED)
         finally:
             if show_annotated:
                 cv.namedWindow(f"{short_name}_annotated", cv.WINDOW_NORMAL)

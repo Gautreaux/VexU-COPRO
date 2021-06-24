@@ -91,21 +91,6 @@ void goalPos(uint8_t const * const buffer, const uint8_t len){
 }
 
 void ballPos(uint8_t const * const buffer, const uint8_t len){
-    int vals[4];
-    int32_t processed = sscanf((const char*)(buffer+1), "%d %d %d %d!", vals, vals + 1, vals + 2, vals + 3);
-
-    // BLUE = 0
-    // RED = 1
-
-    if (vals[3] != 0){
-        return;
-    }
-
-    ballConst[0] = vals[0];
-    ballConst[1] = vals[1];
-    ballConst[2] = vals[2];
-    ballConst[3] = vals[3];
-
-
+    int32_t processed = sscanf((const char*)(buffer+1), "%d %d %d %d!", ballConst, ballConst + 1, ballConst + 2, ballConst + 3);
     return;
 }
