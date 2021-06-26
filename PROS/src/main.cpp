@@ -535,47 +535,69 @@ void opcontrol() {
             }
 
 #else // DRIVER_TRENT
-		int mask = 7;
+
+#define INTAKE_MASK 1
+#define ROLLER_MASK 2
+#define TOP_MASK 4
+
+		int mask = 0;
 
 		// updateMotorGroup(topRollers, -0);
 		// updateMotorGroup(rollers, -0);
 		// updateMotorGroup(intake, -0);
 
-		if(master.get_digital(pros::E_CONTROLLER_DIGITAL_L2)){
-			updateMotorGroup(topRollers, -MAX_ROTATION_INTENSITY);
-			updateMotorGroup(rollers, -MAX_ROTATION_INTENSITY);
-			mask &= 1;
-		}
+		if(master.get_digital(pros::E_CONTROLLER_DIGITAL_L1)){
+			if(!(mask & ROLLER_MASK)){
+			updateMotorGroup(rollers, MAX_ROTATION_INTENSITY);
+			}
+			if(!(mask & TOP_MASK)){
+			updateMotorGroup(topRollers, MAX_ROTATION_INTENSITY);
+			}
 
-		if(master.get_digital(pros::E_CONTROLLER_DIGITAL_R2)){
-			updateMotorGroup(topRollers, -MAX_ROTATION_INTENSITY);
-			updateMotorGroup(rollers, -MAX_ROTATION_INTENSITY);
-			updateMotorGroup(intake, -MAX_ROTATION_INTENSITY);
-			mask &= 0;
+			mask |= ROLLER_MASK | TOP_MASK;
 		}
 
 		if(master.get_digital(pros::E_CONTROLLER_DIGITAL_R1)){
-			updateMotorGroup(intake, MAX_ROTATION_INTENSITY);
-			updateMotorGroup(rollers, MAX_ROTATION_INTENSITY);
-			updateMotorGroup(topRollers, -MAX_ROTATION_INTENSITY*.5);
+			if(!(mask & TOP_MASK)){
+				updateMotorGroup(topRollers, -MAX_ROTATION_INTENSITY*.5);
+			}
+			if(!(mask & ROLLER_MASK)){
+				updateMotorGroup(rollers, MAX_ROTATION_INTENSITY);
+			}
 
-			mask &= 0;
+			if(!(mask & INTAKE_MASK)){
+				updateMotorGroup(intake, MAX_ROTATION_INTENSITY);
+			}
+			mask |= ROLLER_MASK | TOP_MASK | INTAKE_MASK;
 		}
 
-		if(master.get_digital(pros::E_CONTROLLER_DIGITAL_L1)){
-			updateMotorGroup(rollers, MAX_ROTATION_INTENSITY);
-			updateMotorGroup(topRollers, MAX_ROTATION_INTENSITY);
+		if(master.get_digital(pros::E_CONTROLLER_DIGITAL_R2)){
+			if(!(mask & TOP_MASK)){
+				updateMotorGroup(topRollers, -MAX_ROTATION_INTENSITY);
+			}
+			if(!(mask & ROLLER_MASK)){
+				updateMotorGroup(rollers, -MAX_ROTATION_INTENSITY);
+			}
 
-			mask &= 1;
+			if(!(mask & INTAKE_MASK)){
+				updateMotorGroup(intake, -MAX_ROTATION_INTENSITY);
+			}
+			mask |= ROLLER_MASK | TOP_MASK | INTAKE_MASK;
 		}
 
-		if(mask & 1){
+		if(master.get_digital(pros::E_CONTROLLER_DIGITAL_L2)){
+			updateMotorGroup(topRollers, -MAX_ROTATION_INTENSITY);
+			updateMotorGroup(rollers, -MAX_ROTATION_INTENSITY);
+			mask |= ROLLER_MASK | TOP_MASK;
+		}
+
+		if(!(mask & 1)){
 			updateMotorGroup(intake, 0);
 		}
-		if(mask & 2){
+		if(!(mask & 2)){
 			updateMotorGroup(rollers, 0);
 		}
-		if(mask & 4){
+		if(!(mask & 4)){
 			updateMotorGroup(topRollers, 0);
 		}
 #endif // DRIVER_TRENT
