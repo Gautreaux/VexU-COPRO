@@ -3,7 +3,8 @@ import itertools
 import time
 from threading import TIMEOUT_MAX
 from typing import Callable, Optional
-from vexSerial import v_ser
+
+from vexSerial import *
 
 class VexMessenger():
 
@@ -41,7 +42,8 @@ class VexMessenger():
     class UnexpectedDisconnection(Exception):
         pass
     
-    def __init__(self) -> None:
+    def __init__(self, v_ser) -> None:
+        self.v_ser = v_ser
         self._is_connected = False
         self._echoAckCallback = None
     
@@ -50,11 +52,11 @@ class VexMessenger():
             self.try_disconnect(0.2)
 
     def _send_message(self, msg : 'VexMessenger._Message') -> None:
-        v_ser.sendMessage(msg.as_bytes())
+        self.v_ser.sendMessage(msg.as_bytes())
     
     # returns None if message could not be recieved in time 
     def _receive_message(self, timeout_s : float = TIMEOUT_MAX) -> Optional['VexMessenger._Message']:
-        msg = v_ser.receiveMessage(timeout_s)
+        msg = self.v_ser.receiveMessage(timeout_s)
         # print(f"Recieved binary: {msg}")
         if msg is None:
             return None

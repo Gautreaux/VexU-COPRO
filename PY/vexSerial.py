@@ -6,14 +6,15 @@ import serial
 from time import sleep
 import queue
 
-from .SerialProxy import SerialProxy
-from .vexSerialUtil import (
+import SerialProxy
+from vexSerialUtil import (
     DeviceResolutionFailed, MessageTooLong,
     getVexComPort,
     MAX_MESSAGE_LEN, ILLEGAL_CHAR
 )
 
-MAX_CONNECTION_RETRIES = 5
+
+MAX_CONNECTION_RETRIES = 1
 
 _v_ser_serial_object = None
 _SEND_RCV_RUNNING : bool = True
@@ -95,6 +96,8 @@ def _VexSerialReceiver():
         # print(f"Received binary: {bytes(itertools.chain.from_iterable(chunks))}")
         _RECEIVE_Q.put(_deserializeMsg(itertools.chain.from_iterable(chunks)))
 
+class NoSerialConnectionException(Exception):
+    pass
 
 class VexSerial():
 
@@ -114,9 +117,11 @@ class VexSerial():
 
                 if(retryCtr >= MAX_CONNECTION_RETRIES):
                     print(f"Failed to resolve vex device after {retryCtr} attempts")
-                    print(f"  Will use serial proxy")
-                    _v_ser_serial_object = SerialProxy()
-                    break
+                    # print(f"  Will use serial proxy")
+                    # _v_ser_serial_object = SerialProxy()
+                    # break
+                    raise NoSerialConnectionException()
+
 
         if port:
             print(f"Resolved vex com port to: {port}")

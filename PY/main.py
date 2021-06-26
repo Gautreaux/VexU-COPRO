@@ -1,18 +1,66 @@
 import multiprocessing
 if multiprocessing.current_process().name == "MainProcess":
     # print(f"Importing messenger/serial/action: {multiprocessing.parent_process()} {multiprocessing.current_process().name}")
-
-    from vexMessenger import v_messenger
-    from vexController import vexAction
-from vexCV import vexCV
+    import vexAction
+    from vexMessenger import *
+    from vexSerial import *
+import vexCV
+from vexGPIO import *
 
 import time
 
-def main():
+global v_ser
+global v_message
+v_ser = None
+v_messenger = None
 
-    print("Stating messenger connection...")
-    v_messenger.connect()
+def main():
+    global v_ser
+    global v_message
+    v_ser = None
+    v_messenger = None
+
+    power_led, connection_led, goal_led, ball_led = getLEDs()
+
+    def update_leds():
+        power_led.update()
+        connection_led.update()
+        goal_led.update()
+        ball_led.update()
+
+    update_leds()
+
+    power_led.setColor(RGB.GREEN)
+    power_led.setOp(Pattern.ON)
+
+    goal_led.setOp(Pattern.OFF)
+    ball_led.setOp(Pattern.OFF)
+
+    connection_led.setColor(RGB.RED)
+    connection_led.setOp(Pattern.HALF_BLINK)
+
+    while v_ser is None:
+        try:
+            v_ser = VexSerial()
+        except NoSerialConnectionException:
+            update_leds()
+
+    print("Serial Link established")
+
+    connection_led.setColor((1,1,0))
+    update_leds()
+
+    v_messenger = VexMessenger(v_ser)
+
+    print("Starting messenger connection...")
+    while v_messenger.isConnected is False:
+        v_messenger.try_connect(1)
+        update_leds()
     print("Messenger Connected")
+
+    connection_led.setOp(Pattern.ON)
+    connection_led.setColor(RGB.GREEN)
+    update_leds()
 
     cv_args = {
         "showAnnotated": False,
@@ -95,4 +143,7 @@ def main():
     # print("Messenger disconnected")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    finally:
+        GPIO.cleanup()

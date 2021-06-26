@@ -2,10 +2,23 @@ import cv2 as cv
 import multiprocessing
 import numpy as np
 import time
+import os
+
 
 REPORT_INTERVAL_FRAMES = 64
 
-from . import cv_template, cv_template_h, cv_template_w
+# _tdir = os.getcwd() + '/PY/vexCV/template.jpg'
+p = os.path.abspath(__file__)
+p = p.replace("\\", "/")
+_tdir = p.rpartition('/')[0] + "/template.jpg"
+print(f"Template target is '{_tdir}'")
+cv_template_raw = cv.imread(_tdir, 0)
+cv_template_blur = cv.GaussianBlur(cv_template_raw, (5,5), 0)
+cv_template = cv.Canny(cv_template_blur, 5, 50)
+
+cv_template_h, cv_template_w = cv_template.shape
+
+print("CV init done")
 
 # how many goal guess points are needed for a consensus
 CONSENSUS_THRESHOLD = 5

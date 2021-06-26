@@ -1,7 +1,6 @@
 
 import itertools
 from typing import Optional, Tuple
-from vexMessenger import v_messenger
 
 #TODO - proper enum:
 COMMAND_ENUM = {
@@ -20,6 +19,8 @@ class IllegalCommand(Exception):
     pass
 
 def buildSendCommand(key : str, param : Optional[bytes] = None):
+    global v_messenger
+
     if key not in COMMAND_ENUM:
         raise IllegalCommand(key)
 
