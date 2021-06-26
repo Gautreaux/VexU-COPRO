@@ -177,6 +177,8 @@ void drive_for_distance(int32_t distance, Motorgroup& left_drive, Motorgroup& ri
 #ifdef ROBOT_TARGET_24
 #define CV_X_TARGET 315.0
 #define CV_H_TARGET 110
+#define CV_BALL_X_TARGET 330
+#define CV_BALL_INTAKE_START_RAD 150
 #endif //ROBOT_TARGET_24
 
 #ifdef ROBOT_TARGET_15

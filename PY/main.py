@@ -1,6 +1,6 @@
 import multiprocessing
 if multiprocessing.current_process().name == "MainProcess":
-    print(f"Importing messenger/serial/action: {multiprocessing.parent_process()} {multiprocessing.current_process().name}")
+    # print(f"Importing messenger/serial/action: {multiprocessing.parent_process()} {multiprocessing.current_process().name}")
 
     from vexMessenger import v_messenger
     from vexController import vexAction
