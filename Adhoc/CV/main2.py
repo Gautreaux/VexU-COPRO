@@ -4,7 +4,9 @@ if __name__ == "__main__":
     import os
     import time
 
-    search_path = os.path.abspath(__file__).rpartition('\\')[0] + "/../../PY/"
+    p = os.path.abspath(__file__)
+    p = p.replace("\\", "/")
+    search_path = p.rpartition('/')[0] + "/../../PY/"
     sys.path.insert(1, search_path)
     from vexCV import vexCV
     import cv2 as cv
@@ -13,8 +15,8 @@ if __name__ == "__main__":
     # print(f"CWD: {os.getcwd()}")
 
     cameras = [
-        (os.path.abspath(__file__).rpartition('\\')[0] + "/dev/15.1.avi", False),
-        (os.path.abspath(__file__).rpartition('\\')[0] + "/dev/lowCam_15_ball.avi", False),
+        (os.path.abspath(__file__).replace("\\", "/").rpartition('/')[0] + "/dev/15.1.avi", False),
+        (os.path.abspath(__file__).replace("\\", "/").rpartition('/')[0] + "/dev/lowCam_15_ball.avi", False),
     ]
 
     # cameras[0] = (0, True)
@@ -23,23 +25,27 @@ if __name__ == "__main__":
     # cameras[0] = (0, True)
     # cameras[1] = (2, True)
 
-    cameras[0] = None
+    # cameras[0] = None
     # cameras[1] =  (os.path.abspath(__file__).rpartition('\\')[0] + "/dev/ballsForColor.avi", False)
-    cameras[1] = (1, True)
+    # cameras[1] = (1, True)
 
     args = {
-        "showAnnotated" : True,
+        "showAnnotated" : False,
         "sharpen" : False,
     }
 
-    vexCV.cv_mp(args, cameras)
+    _, _, q = vexCV.cv_mp(args, cameras)
 
     print("Vex CV, MP started, main sleeping")
 
     try:
         while True:
-            time.sleep(30)
-            print("MAIN")
+            isGoal, data = q.get()
+            # print(f"outbound message: {isGoal} {data}")
+            if isGoal:
+                print(f"goal_sending{data}")
+            else:
+                print(f"ball_sending{data}")
     except KeyboardInterrupt:
         pass
     

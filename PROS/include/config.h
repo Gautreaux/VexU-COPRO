@@ -33,14 +33,14 @@
 
 // specify which robot is being target with this build
 // #define ROBOT_TARGET_DEV
-//#define ROBOT_TARGET_24
-#define ROBOT_TARGET_15
+#define ROBOT_TARGET_24
+// #define ROBOT_TARGET_15
 
 
 // specify which driver is running this code
 // #define DRIVER_AARON
-#define DRIVER_HUMZA
-// #define DRIVER_TRENT
+// #define DRIVER_HUMZA
+#define DRIVER_TRENT
 
 
 #ifdef ROBOT_TARGET_DEV

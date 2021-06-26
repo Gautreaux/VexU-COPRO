@@ -273,6 +273,8 @@ def getNextFrameBlocking(capture):
     return f
 
 def findGoals(f, frame_to_annotate, q, run_sharpen):
+    # print(f"Called find goals {frame_to_annotate is not None}")
+
     group_center = getBestGoalPosition(f, frame_to_annotate, run_sharpen)
 
     if group_center is None:
@@ -368,6 +370,8 @@ def findBalls(f, frame_to_annotate, q, color):
     return ballLocations
 
 def findBestBall(f, frame_to_annotate, q, color):
+    # print(f"Called find best ball {frame_to_annotate is not None}")
+
     ballLocations = findBalls(f, frame_to_annotate, None, color)
 
     # print(f"Ball Locations: {ballLocations}")
@@ -393,6 +397,8 @@ def mp_entry_common(args, isGoals, camera_details, q):
     run_sharpen = args['sharpen']
 
     short_name = "GOALS" if isGoals else "BALLS"
+
+    print(f"Process launched for {short_name}: {show_annotated} {run_sharpen}")
 
     frame_counter = 0
     start_time = time.time()

@@ -88,7 +88,8 @@ def _VexSerialReceiver():
 
         c = _v_ser_serial_object.read()
         chunks.append(bytes(c))
-        while (c := int(chunks[-1][-1])) != 0:
+        c = int(chunks[-1][-1])
+        while c != 0:
             chunks.append(_v_ser_serial_object.read(size=c))
         # print(f"Received chunks: {chunks}")
         # print(f"Received binary: {bytes(itertools.chain.from_iterable(chunks))}")
